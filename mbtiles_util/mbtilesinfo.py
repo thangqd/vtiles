@@ -1,5 +1,5 @@
 import sqlite3, json
-import argparse, os, sys
+import os, sys
 
 # Check if mbtiles is vector or raster
 def check_vector(input_filename):    
