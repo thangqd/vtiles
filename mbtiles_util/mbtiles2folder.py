@@ -31,7 +31,6 @@ def main():
   #   print ('Please provide  the mbtiles input filename and output folder')
   #   exit()
 
-<<<<<<< HEAD
   if not args.i :
     print ('Please provide the mbtiles input filename.')
     exit()
@@ -42,13 +41,6 @@ def main():
     print ('Please provide the output folder name.')
     exit()
 
-=======
-  if not args.i or not args.o:
-    print ('Please provide the mbtiles input filename and output folder name')
-    exit()
-
-
->>>>>>> parent of 0ae8f82 (add mbtilesinfo)
   # Process input
   # input_filename = sys.argv[1]
   input_filename = args.i
