@@ -13,7 +13,6 @@ def set_dir(d):
   safe_makedir(d)
   os.chdir(d)
 
-
 def extract_metadata(cursor):
   """Extract metadata from MBTiles file."""
   cursor.execute("SELECT name, value FROM metadata")
