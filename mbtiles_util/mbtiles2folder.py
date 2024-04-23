@@ -1,12 +1,10 @@
 
 import os
-import sys
 import sqlite3, json
 import argparse
+from tqdm import tqdm
 
 ######################################
-# Helper functions
-
 def safeMakeDir(d):
   if os.path.exists(d):
     return
@@ -26,7 +24,6 @@ def main():
 
   # Parse the command-line arguments
   args = parser.parse_args()
-
   # if not len(sys.argv) == 3:
   #   print ('Please provide  the mbtiles input filename and output folder')
   #   exit()
@@ -47,7 +44,6 @@ def main():
   # dirname = input_filename[0:input_filename.index('.')]
   # dirname = sys.argv[2]
   dirname = args.o
-  print ('Converting file "%s" into tiles in local directory "%s"' % (input_filename, dirname))
 
   # This will fail if there is already a directory.
   os.makedirs(dirname)
@@ -84,21 +80,29 @@ def main():
   else:
       out_format = ''
 
-  # select all info in tiles view
-  cursor.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles order by zoom_level')
+  cursor.execute('SELECT COUNT(*) FROM tiles')
+  total_tiles = cursor.fetchone()[0]
+
+  print ('Start converting "%s" into tiles folder "%s"' % (input_filename, dirname))
 
   os.chdir(dirname)
-  for row in cursor:
-    setDir(str(row[0]))
-    setDir(str(row[1]))
-    # y = (2^row[0] - 1) - row[2]
-    output_file = open(str(row[2]) + out_format, 'wb')
-    # output_file = open(str(y) + out_format, 'wb')
-    output_file.write(row[3])
-    output_file.close()
-    os.chdir('..')
-    os.chdir('..')
-
-  print ('Done!')
+  # select all info in tiles view
+  cursor.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles order by zoom_level')
+  with tqdm(total=total_tiles, desc="Progress", unit="tile") as pbar:
+    for row in cursor:
+      setDir(str(row[0]))
+      setDir(str(row[1]))
+      # y = (2^row[0] - 1) - row[2]
+      output_file = open(str(row[2]) + out_format, 'wb')
+      # output_file = open(str(y) + out_format, 'wb')
+      output_file.write(row[3])
+      output_file.close()
+      os.chdir('..')
+      os.chdir('..')
+      pbar.update(1)
+  
+  print ('Converting mbtiles to folder done!')
+  connection.close()
+  
 if __name__ == "__main__":
     main()
