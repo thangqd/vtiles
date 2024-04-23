@@ -10,8 +10,9 @@ setup(
     packages=find_packages(),
     entry_points={
         'console_scripts': [
-            'mbtiles2folder = mbtiles_util.mbtiles2folder:main',
             'mbtilesinfo = mbtiles_util.mbtilesinfo:main',
+            'mbtiles2folder = mbtiles_util.mbtiles2folder:main',
+            'mbtiles2s3 = mbtiles_util.mbtiles2s3:main'            
         ],
     },
     description='MBTiles Utilities',
