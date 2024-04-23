@@ -1,5 +1,5 @@
 # python setup.py sdist bdist_wheel
-#twine upload dist/*
+# twine upload dist/*
 
 
 from setuptools import setup, find_packages
@@ -11,6 +11,7 @@ setup(
     entry_points={
         'console_scripts': [
             'mbtiles2folder = mbtiles_util.mbtiles2folder:main',
+            'mbtilesinfo = mbtiles_util.mbtilesinfo:main',
         ],
     },
     description='MBTiles Utilities',
