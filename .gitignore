@@ -11,6 +11,7 @@ __pycache__/
 .vscode/
 
 # Ignore build, dist folder
-dist/
 data/
-mbtiles_util.egg-info/
+# dist/
+# build/
+# mbtiles_util.egg-info/
