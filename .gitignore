@@ -12,6 +12,6 @@ __pycache__/
 
 # Ignore build, dist folder
 data/
-# dist/
-# build/
-# mbtiles_util.egg-info/
+dist/
+build/
+mbtiles_util.egg-info/
