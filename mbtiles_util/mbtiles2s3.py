@@ -110,8 +110,8 @@ def main():
     exit()
   
   # convert_mbtiles_to_folder(args.i, args.o)
-  bucket_name='ss-vector-tile-data'
-  s3_prefix= 'sovereign/v20240410/mbtiles_util/'
+  bucket_name='bucket_name'
+  s3_prefix= 's3_prefix'
   folder_to_s3(args.o,bucket_name,s3_prefix)
 
 if __name__ == "__main__":
