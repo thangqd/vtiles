@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='mbtiles_util',
-    version='1.0.0',
+    version='1.0.2',
     packages=find_packages(),
     entry_points={
         'console_scripts': [
@@ -24,6 +24,8 @@ setup(
     url='https://github.com/thangqd/mbtiles_util',
     classifiers=[
         'Programming Language :: Python :: 3',
+        'Environment :: Console',
+        'Topic :: Scientific/Engineering :: GIS',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
     ],
