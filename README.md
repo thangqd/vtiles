@@ -5,6 +5,15 @@
     ``` bash 
     pip install mbtiles-util
     ```
+- Show information of installed mbtiles-util: 
+    ``` bash 
+    pip install mbtiles-util
+    ```
+- Install the latest vertion of mbtiles-util:
+    ``` bash 
+    pip install mbtiles-util --upgrade
+    ```
+    
 - Visit mbtiles-util on [PyPI](https://pypi.org/project/mbtiles-util/)
 
 ## Usage:
