@@ -71,22 +71,22 @@ def read_vector_layers(input_filename):
     connection = sqlite3.connect(input_filename)
     cursor = connection.cursor()
     cursor.execute("SELECT name, value FROM metadata where name = 'json'")
-    json_content = cursor.fetchone()[1]
-    layers_json = json.loads(json_content)
-    # print (layers_json)
-    if "vector_layers" in layers_json:
-      vector_layers = layers_json["vector_layers"]
-      print("Vector layers:")
-      for index, layer in enumerate(vector_layers):
-          row_index = index + 1
-          layer_id  = layer["id"]
-          print(f"{row_index}: {layer_id}")
-          # print("  Description:", layer.get("description", "N/A"))
-          # print("  Min zoom:", layer.get("minzoom", "N/A"))
-          # print("  Max zoom:", layer.get("maxzoom", "N/A"))
-          # print("  Fields:", layer.get("fields", "N/A"))
+    row = cursor.fetchone()
+    if row is not None:
+        json_content = row[1]
+        layers_json = json.loads(json_content)
+        if "vector_layers" in layers_json:
+            vector_layers = layers_json["vector_layers"]
+            print("Vector layers:")
+            for index, layer in enumerate(vector_layers):
+                row_index = index + 1
+                layer_id = layer["id"]
+                print(f"{row_index}: {layer_id}")
+                # Additional information printing here if needed
+        else:
+            print("No 'vector_layers' found in metadata.")
     else:
-      print("No 'vector_layers' found in metadata.")
+        return
     # Write metadata to JSON content
     # metadata_json_path = os.path.join(os.path.dirname(input_filename), "tiles.json")
     # with open(metadata_json_path, "w") as metadata_file:

@@ -49,7 +49,7 @@ def count_total_tiles(cursor):
   cursor.execute('SELECT COUNT(*) FROM tiles')
   return cursor.fetchone()[0]
 
-def convert_mbtiles_to_folder(input_filename, output_folder):
+def mbtiles2folder(input_filename, output_folder):
   """Convert MBTiles file to folder."""
   os.makedirs(output_folder)
   connection = sqlite3.connect(input_filename)
@@ -74,45 +74,49 @@ def convert_mbtiles_to_folder(input_filename, output_folder):
   print('Converting mbtiles to folder done!')
   connection.close()
 
-def folder_to_s3(output_folder,bucket_name, s3_prefix=''):
-  # s3_client = boto3.client('s3')
-  # with tqdm(total=5000, desc="Progress", unit="tile") as pbar:
-  #   for root, dirs, files in os.walk(output_folder):
-  #     for file in files:
-  #       local_file_path = os.path.join(root, file)
-  #       s3_key = os.path.relpath(local_file_path, output_folder)
-  #       s3_key = os.path.join(s3_prefix, s3_key).replace('\\', '/')  # for Windows compatibility
-  #       s3_client.upload_file(local_file_path, bucket_name, s3_key)
-  #   pbar.update(1)
-  s3 = boto3.client(
-    's3',
-    aws_access_key_id='aws_access_key_id',
-    aws_secret_access_key='aws_secret_access_key'
+def folder_to_s3(input_filename, output_folder, bucket_name, s3_prefix='', region=None, aws_access_key_id=None, aws_secret_access_key=None):
+  mbtiles2folder(input_filename, output_folder);
+  session = boto3.Session(
+      region_name=region,
+      aws_access_key_id=aws_access_key_id,
+      aws_secret_access_key=aws_secret_access_key,
   )
-  file_name = '0.png'
-  s3.upload_file(file_name, bucket_name, s3_prefix + file_name)
+  s3 = session.client('s3')
+  total_files = sum(len(files) for _, _, files in os.walk(output_folder))
+  with tqdm(total=total_files, desc="Uploading", unit="file") as pbar:
+    for root, dirs, files in os.walk(output_folder):
+      for file in files:
+          local_file_path = os.path.join(root, file)
+          s3_key = os.path.relpath(local_file_path, output_folder)
+          s3_key = os.path.join(s3_prefix, s3_key).replace('\\', '/')  # for Windows compatibility
+          s3.upload_file(local_file_path, bucket_name, s3_key)
+          pbar.update(1)
   print('Uploading folder to S3 done!')
 
 def main():
-  parser = argparse.ArgumentParser(description='Convert MBTiles file to folder')
-  parser.add_argument('-i', help='Input MBTiles file name')
-  parser.add_argument('-o', help='Output folder name')
+  parser = argparse.ArgumentParser(description='Upload a folder to S3')
+  parser.add_argument('-i', help='Input folder name', required=True)
+  parser.add_argument('-b', help='S3 bucket name', required=True)
+  parser.add_argument('-p', help='S3 prefix (optional)', default='')
+  parser.add_argument('-r', help='AWS region (optional)', default='us-east-1')
+  args = parser.parse_args()
+
   args = parser.parse_args()
 
   if not args.i:
-    print('Please provide the mbtiles input filename.')
-    exit()
+      print('Please provide the input folder name.')
+      exit()
   if not os.path.exists(args.i):
-    print('MBTiles file does not exist!. Please recheck and input a correct file path.')
-    exit()
-  if not args.o:
-    print('Please provide the output folder name.')
-    exit()
-  
-  # convert_mbtiles_to_folder(args.i, args.o)
-  bucket_name='bucket_name'
-  s3_prefix= 's3_prefix'
-  folder_to_s3(args.o,bucket_name,s3_prefix)
+      print('Input folder does not exist!. Please recheck and input a correct folder path.')
+      exit()
+  if not args.b:
+      print('Please provide the S3 bucket name.')
+      exit()
+
+  aws_access_key_id = input('Enter AWS Access Key ID: ')
+  aws_secret_access_key = input('Enter AWS Secret Access Key: ')
+  folder_to_s3(args.i, args.b, args.p, aws_access_key_id, aws_secret_access_key)
 
 if __name__ == "__main__":
-    main()
+  main()
+
