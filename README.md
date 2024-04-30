@@ -16,7 +16,7 @@
 ### mbtiles2folder: 
 - Convert MBTiles file to folder:  
     ``` bash 
-    mbtiles2folder -i <file_path> -o [output_folder (optinal)] -tms [TMS scheme (optinal 0 or 1, default is 0)]
+    mbtiles2folder -i <file_path> -o [output_folder (optional)] -tms [TMS scheme (optional - 0 or 1, default is 0)]
     ```
 ### folder2S3: 
 - Uplpad folder to Amazon S3 Bucket:  
