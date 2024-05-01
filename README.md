@@ -7,7 +7,7 @@
     ```
 - Show information of installed mbtiles-util: 
     ``` bash 
-    pip install mbtiles-util
+    pip show mbtiles-util
     ```
 - Install the latest vertion of mbtiles-util:
     ``` bash 
