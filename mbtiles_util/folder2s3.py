@@ -24,7 +24,7 @@ def folder2s3(input_folder, bucket_name='', s3_prefix='', region_name=None, aws_
   print('Uploading folder to S3 done!')
 
 def main():
-  parser = argparse.ArgumentParser(description='Upload a folder to S3')
+  parser = argparse.ArgumentParser(description='Upload a tiles folder to S3')
   parser.add_argument('-i', help='Input folder name', required=True)
   parser.add_argument('-b', help='S3 bucket name', required=True)
   parser.add_argument('-p', help='S3 prefix (optional)', default='')
@@ -32,17 +32,19 @@ def main():
   args = parser.parse_args()
 
   if not args.i:
-      print('Please provide the input folder name.')
-      exit()
+    print('Please provide the input folder name.')
+    exit()
   if not os.path.exists(args.i):
-      print('Input folder does not exist!. Please recheck and input a correct folder path.')
-      exit()
+    print('Input folder does not exist!. Please recheck and input a correct one.')
+    exit()
   if not args.b:
-      print('Please provide the S3 bucket name.')
-      exit()
+    print('Please provide the S3 bucket name.')
+    exit()
+  input_folder_abspath =  os.path.abspath(args.i)
 
   aws_access_key_id = input('Enter AWS Access Key ID: ')
   aws_secret_access_key = input('Enter AWS Secret Access Key: ')
+  print (f'Uploading folder {input_folder_abspath} to S3 with bucket name: {args.b}')
   folder2s3(args.i, args.b, args.p, args.r, aws_access_key_id, aws_secret_access_key)
 
 if __name__ == "__main__":

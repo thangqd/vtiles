@@ -1,15 +1,19 @@
 import sqlite3, json
-import os, sys
+import os, sys, datetime
+
 
 # Check if mbtiles is vector or raster
 def check_vector(input_filename):    
-    connection = sqlite3.connect(input_filename)
-    cursor = connection.cursor()
-    cursor.execute("SELECT value FROM metadata WHERE name='format'")
-    format_info = cursor.fetchone()
-
-    # Close the database connection
-    connection.close()
+    try: 
+        connection = sqlite3.connect(input_filename)
+        cursor = connection.cursor()
+        cursor.execute("SELECT value FROM metadata WHERE name='format'")
+        format_info = cursor.fetchone()
+        # Close the database connection
+        cursor.close()
+        connection.close()
+    except:
+        return -2
 
     # Check if format_info is not None
     if format_info:
@@ -18,8 +22,8 @@ def check_vector(input_filename):
             return 1
         elif 'png' in format_value or 'jpg' in format_value or 'webp' in format_value or 'raster' in format_value:
             return 0
-    else:
-        return -1
+        else:
+            return -1
 
 # Read vector metadata
 def read_vector_metadata(input_filename):
@@ -77,6 +81,7 @@ def read_vector_layers(input_filename):
         layers_json = json.loads(json_content)
         if "vector_layers" in layers_json:
             vector_layers = layers_json["vector_layers"]
+            print("######:")
             print("Vector layers:")
             for index, layer in enumerate(vector_layers):
                 row_index = index + 1
@@ -84,6 +89,7 @@ def read_vector_layers(input_filename):
                 print(f"{row_index}: {layer_id}")
                 # Additional information printing here if needed
         else:
+            print("######:")
             print("No 'vector_layers' found in metadata.")
     else:
         return
@@ -97,26 +103,40 @@ def main():
     if len(sys.argv) != 2:
       print("Please provide the mbtiles input filename.")
       return
-
     input_filename = sys.argv[1]
+    file_stat = os.stat(input_filename)
+    file_size_mb = round(file_stat.st_size / (1024 * 1024),2)
+    file_created = datetime.datetime.fromtimestamp(file_stat.st_ctime).strftime("%Y-%m-%d %I:%M:%S %p")
+    file_last_modified = datetime.datetime.fromtimestamp(file_stat.st_mtime).strftime("%Y-%m-%d %I:%M:%S %p")
+    # file_size = os.path.getsize(input_filename)
+    # file_size_mb = round(file_size / (1024 * 1024),2)
+    print('######')
+    print("File size: ", file_size_mb, 'MB')
+    print("Date created: ", file_created)
+    print("Last modified: ", file_last_modified)
     if (os.path.exists(input_filename)):
         if check_vector(input_filename) == 1: # vector
             metadata = read_vector_metadata(input_filename)
             num_tiles = count_tiles(input_filename)
+            print("######")
             print("Metadata:")
             for key, value in metadata.items():
                 print(f"{key}: {value}")
-
+            print('######')
             print(f"Total number of tiles: {num_tiles}")
             read_vector_layers(input_filename)
+        
         elif check_vector(input_filename) == 0: # raster
             metadata = read_raster_metadata(input_filename)
             num_tiles = count_tiles(input_filename)
+            print("######")
             print("Metadata:")
             for key, value in metadata.items():
                 print(f"{key}: {value}")
-
             print(f"Total number of tiles: {num_tiles}")
+        elif check_vector(input_filename) == -1: # Undefined
+            print ('Cannot detect format type in Metadata')
+        else: print ('No metadata found!')
     else: 
         print ('MBTiles file does not exist!. Please recheck and input a correct file path.')
         return

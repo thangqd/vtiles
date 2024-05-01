@@ -109,21 +109,31 @@ def main():
   if not args.i:
     print('Please provide the input folder.')
     exit()
+
   if not os.path.isdir(args.i):
-    print('Input folder does not exist!. Please recheck and input a correct folder.')
+    print('Input folder does not exist!. Please recheck and input a correct one.')
     exit()
 
-  if not args.o:
-    print('Please provide the full mbtiles name. Ex: tiles.mbtiles')
-    exit()
-    # output_mbtiles = os.path.splitext(os.path.basename(args.i))[0]  # Get file name without extension
-    # output_folder_path = os.path.join(os.path.dirname(args.i), output_folder)
-    # args.o = output_mbtiles
-    # print(f'Output folder not provided. Creating folder with the same name as the input file in the same directory: {output_folder_path}')
-  # if not os.path.isfile(args.o):
-  #   print('File path does not exist. Please provide the full mbtiles name. Ex: tiles.mbtiles')
-  #   exit()
-  folder2mbtiles(args.i, args.o, args.tms)
+  input_folder_abspath =  os.path.abspath(args.i)
+
+  if not args.o:    
+    output_file_name = os.path.basename(input_folder_abspath) + '.mbtiles' # Get input folder name
+    output_file_abspath  = os.path.abspath(output_file_name)  # Get absolute path of default output file name
+    if not os.path.exists(output_file_abspath): 
+      print(f'Converting folder {input_folder_abspath} to {output_file_abspath}')        
+    else: # the output file is already existed.
+      print(f'Output MBTiles file {output_file_abspath} already existed! Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+      exit()
+  
+  else:      
+    output_file_abspath = os.path.abspath(args.o)
+    if output_file_abspath.endswith('mbtiles') and not os.path.exists(output_file_abspath):
+      print(f'Converting folder {input_folder_abspath} to {output_file_abspath}')     
+    else:
+      print(f'Output MBTiles file {output_file_abspath} is not valid or already existed!. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+      exit()
+  
+  folder2mbtiles(input_folder_abspath, output_file_abspath, args.tms)
 
 if __name__ == "__main__":
   main()

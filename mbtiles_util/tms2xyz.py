@@ -1,45 +1,40 @@
-import os
-import argparse
+#!/usr/bin/env python
+import os, fnmatch, shutil, sys, argparse
 
-def tms_to_xyz(input_dir, output_dir):
-    # Create output directory if it doesn't exist
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+#get the command line arguments and get some variables set up
+parser = argparse.ArgumentParser(description='Convert a TMS directory structure (like one created with gdal2tiles) to a XYZ structure')
+parser.add_argument('inDIR', type=str, nargs=1, help='The directory containing the TMS files')
+parser.add_argument('outDIR', type=str, nargs=1, help='The output directory for the XYZ files')
+args = parser.parse_args()
+inDIR = args.inDIR[0]
+copyDIR = args.outDIR[0]
+# pattern = '*png' #only looking for png images and will skip the rest later on
+pattern = '*pbf' #only looking for png images and will skip the rest later on
+fileList = []
 
-    # Iterate through TMS tiles
-    for root, dirs, files in os.walk(input_dir):
-        for file in files:
-            if file.endswith(".pbf"):  # Assuming tiles are in Protocol Buffer format
-                tms_tile_path = os.path.join(root, file)
-                xyz_tile_path = os.path.join(output_dir, os.path.relpath(tms_tile_path, input_dir))
+#check to see if output directory exists, die if it does
+if os.path.exists(copyDIR):
+    sys.exit("ERROR: The output directory already exists!") #exit the script if the output already exists
 
-                # Read TMS tile
-                with open(tms_tile_path, 'rb') as f:
-                    tms_tile_data = f.read()
+#move into the directory you want to copy
+os.chdir(inDIR)
 
-                # Convert TMS to XYZ format (no transformation needed for vector tiles)
-                xyz_tile_data = tms_tile_data
-
-                # Ensure directory exists for writing XYZ tile
-                xyz_tile_dir = os.path.dirname(xyz_tile_path)
-                if not os.path.exists(xyz_tile_dir):
-                    os.makedirs(xyz_tile_dir)
-
-                # Write XYZ tile
-                with open(xyz_tile_path, 'wb') as f:
-                    f.write(xyz_tile_data)
-
-                print(f"Converted {tms_tile_path} to XYZ format")
-
-if __name__ == "__main__":
-    # Create argument parser
-    parser = argparse.ArgumentParser(description="Convert TMS vector tiles to XYZ vector tiles")
-    # Add arguments
-    parser.add_argument("input_dir", help="Input directory containing TMS vector tiles in PBF format")
-    parser.add_argument("output_dir", help="Output directory to save the converted XYZ vector tiles")
-
-    # Parse arguments
-    args = parser.parse_args()
-
-    # Call the conversion function with user-provided input and output directories
-    tms_to_xyz(args.input_dir, args.output_dir)
+# Walk through directory and get the files listed
+for rVal, dName, fList in os.walk("."):
+    #make the directory structure to put the new tiles into
+    newpath = os.path.join("..", copyDIR, rVal)
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    
+    for fileName in fList: #loop through all the files
+        if fnmatch.fnmatch(fileName, pattern): # Match search string
+            if rVal.find("/") > -1:
+                 zxParts = rVal.split("/")
+            else:
+                 zxParts = rVal.split("\\")
+            yParts = fileName.split(".")
+            # newY = str(2**int(zxParts[1])-int(yParts[0])-1) + ".png"
+            newY = str(2**int(zxParts[1])-int(yParts[0])-1) + ".pbf"
+            shutil.copyfile((os.path.join(rVal, fileName)), (os.path.join(newpath, newY)))
+        else:
+            print ("skipping file:" , fileName)

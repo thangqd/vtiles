@@ -1,4 +1,4 @@
-import os
+import os, sys
 import sqlite3
 import json
 import argparse
@@ -98,16 +98,23 @@ def main():
   if not args.i:
     print('Please provide the mbtiles input filename.')
     exit()
+  
   if not os.path.exists(args.i):
     print('MBTiles file does not exist!. Please recheck and input a correct file path.')
     exit()
-
+  
+  input_filename_abspath =  os.path.abspath(args.i)
   if not args.o:
-    output_folder = os.path.splitext(os.path.basename(args.i))[0]  # Get file name without extension
-    output_folder_path = os.path.join(os.path.dirname(args.i), output_folder)
-    args.o = output_folder_path
-    print(f'Output folder not provided. Creating folder with the same name as the input file in the same directory: {output_folder_path}')
-
+    if args.i:
+      output_folder_name = os.path.splitext(os.path.basename(args.i))[0]  # Get file name without extension
+      output_folder_path = os.path.join(os.path.dirname(args.i), output_folder_name)
+      args.o = output_folder_path
+      output_folder_abspath  = os.path.abspath(output_folder_path)      
+      print(f'Output folder not provided. Converting {input_filename_abspath} to {output_folder_abspath} folder.')
+  else:     
+     output_folder_abspath = os.path.abspath(args.o)
+     print(f'Converting {input_filename_abspath} to {output_folder_abspath} folder')
+  
   convert_mbtiles_to_folder(args.i, args.o, args.tms)
 
 if __name__ == "__main__":
