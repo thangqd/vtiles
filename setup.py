@@ -5,7 +5,8 @@ from setuptools import setup, find_packages
 
 requirements = [
     # "osmium~=3.6.0",
-    "boto3~=1.34.72"
+    "boto3~=1.34.72",
+    "tqdm~=4.66.2"
 ]
 
 setup(
