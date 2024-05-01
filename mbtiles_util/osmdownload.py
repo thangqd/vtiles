@@ -173,7 +173,7 @@ def download_file(url, save_to) :
 
 def main():
     save_to = os.getcwd()
-    get_data("monaco", update=True,directory = save_to)
+    get_data("yemen", update=True,directory = save_to)
     # print (available)
     # print (available.keys())
     # url = "https://github.com/udsleeds/openinfra/releases/download/v0.2/Leeds_06_06_22.osm.pbf"
