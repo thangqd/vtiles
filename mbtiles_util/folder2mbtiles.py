@@ -1,10 +1,7 @@
 import sqlite3, argparse, sys, logging, time, os, json
 from tqdm import tqdm
-
+from utils import flip_y, num2deg
 logger = logging.getLogger(__name__)
-
-def flip_y(zoom, y):
-  return (2**zoom-1) - y
 
 def mbtiles_connect(mbtiles_file):
   try:
@@ -32,11 +29,47 @@ def mbtiles_setup(cur):
   cur.execute("""create unique index tile_index on tiles
               (zoom_level, tile_column, tile_row);""")
 
-def import_metadata(con, cur, metadata_json):
+def import_metadata(cur, metadata_json):
   for name, value in metadata_json.items():
     cur.execute('insert into metadata (name, value) values (?, ?)',
                 (name, value))
-    
+
+# Create metadata table in case no metadata.json found in the tiles folder
+def create_metadata(cur, name, format, tms=0):      
+  cur.execute("SELECT min(zoom_level) FROM tiles")
+  minzoom = cur.fetchone()[0]
+  # Execute SQL query to find the maximum value
+  cur.execute("SELECT max(zoom_level) FROM tiles")
+  maxzoom = cur.fetchone()[0]
+
+  cur.execute("SELECT min(tile_row), max(tile_row), min(tile_column), max(tile_column) from tiles WHERE zoom_level = ?", [maxzoom])
+
+  minY, maxY, minX, maxX = cur.fetchone()
+  if tms == 1:
+    minY = (2 ** maxzoom) - minY - 1
+    maxY = (2 ** maxzoom) - maxY - 1
+
+  minLat, minLon = num2deg(minX, minY, maxzoom)
+  maxLat, maxLon = num2deg(maxX+1, maxY+1, maxzoom)
+
+  bounds = [minLon, minLat, maxLon, maxLat]
+  boundsString = ','.join(map(str, bounds))
+
+  center = [(minLon + maxLon)/2, (minLat + maxLat)/2, maxzoom]
+  centerString = ','.join(map(str, center))
+
+  cur.executemany("INSERT INTO metadata (name, value) VALUES (?, ?);", [
+  ("name", name),
+  ("format", format), 
+  ("bounds", boundsString), 
+  ("center", centerString), 
+  ("minzoom", minzoom), 
+  ("maxzoom", maxzoom), 
+  ("desccription", 'MBTiles converted from a tiles folder using mbtiles-util'), 
+  ("attribution", '<a href="https://github.com/thangqd/mbtiles_util" target="_blank">&copy; mbtiles-util</a>'),
+  ("type", ''),
+  ("version", '')
+])
 
 def optimize_connection(cur):
   cur.execute("""PRAGMA synchronous=0""")
@@ -56,8 +89,8 @@ def folder2mbtiles(input_folder, mbtiles_file, tms=0):
   mbtiles_setup(cur)
   try:
     metadata = json.load(open(os.path.join(input_folder, 'metadata.json'), 'r'))
-    import_metadata(con, cur, metadata)
-    logger.info('importing metadata done.')
+    import_metadata(cur, metadata)
+    logger.info('Importing metadata done.')
   except IOError:      
     logger.warning('metadata.json not found')
 
@@ -90,6 +123,13 @@ def folder2mbtiles(input_folder, mbtiles_file, tms=0):
             # count = count + 1
             # if (count % 100) == 0:
             #   logger.info(" %s tiles inserted (%d tiles/sec)" % (count, count / (time.time() - start_time)))
+  try:
+    name = os.path.basename(input_folder)
+    create_metadata(cur, name, ext, tms)
+    logger.info('Creating metadata done.')
+  except:      
+    logger.warning('No metadata created!.')
+  
   cur.close()
   con.commit()
   con.close()
@@ -110,8 +150,8 @@ def main():
     print('Please provide the input folder.')
     exit()
 
-  if not os.path.isdir(args.i):
-    print('Input folder does not exist!. Please recheck and input a correct one.')
+  if not os.path.exists(args.i) or not os.path.isdir(args.i):
+    print('Input folder does not exist or invalid!. Please recheck and input a correct one.')
     exit()
 
   input_folder_abspath =  os.path.abspath(args.i)

@@ -11,7 +11,7 @@ requirements = [
 
 setup(
     name='mbtiles_util',
-    version='1.0.4',
+    version='1.0.5',
     author = 'Thang Quach',
     author_email= 'quachdongthang@gmail.com',
     url='https://github.com/thangqd/mbtiles_util',
@@ -24,6 +24,7 @@ setup(
         'console_scripts': [
             'mbtilesinfo = mbtiles_util.mbtilesinfo:main',
             'mbtiles2folder = mbtiles_util.mbtiles2folder:main',
+            'folder2mbtiles = mbtiles_util.folder2mbtiles:main',  
             'folder2s3 = mbtiles_util.folder2s3:main'   
         ],
     },    

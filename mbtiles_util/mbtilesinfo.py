@@ -58,12 +58,27 @@ def read_raster_metadata(input_filename):
 
 def count_tiles(input_filename):
     """Count the number of tiles in the MBTiles file."""
+    num_tiles = None
     connection = sqlite3.connect(input_filename)
     cursor = connection.cursor()
     
-    # Count the number of tiles
-    cursor.execute("SELECT COUNT(*) FROM tiles")
-    num_tiles = cursor.fetchone()[0]
+    cursor.execute("SELECT type FROM sqlite_master WHERE name='tiles'")
+    # Fetch the result
+    table_or_view = cursor.fetchone()[0]
+    if table_or_view == 'table':
+        # Count the number of tiles
+        cursor.execute("SELECT COUNT(*) FROM tiles")
+        num_tiles = cursor.fetchone()[0]
+   
+    # in case the tiles view join 2 tables 'images' and 'map' may have greater number of tiles than actual
+    elif table_or_view == 'view':
+        cursor.execute("""SELECT COUNT(DISTINCT CONCAT(
+			CAST(zoom_level  AS TEXT), '|', 
+			CAST(tile_column  AS TEXT) , '|', CAST(tile_row  AS TEXT), '|', 
+			CAST(tile_data  AS TEXT)
+			))
+            FROM tiles""")
+        num_tiles = cursor.fetchone()[0]
     
     cursor.close()
     connection.close()

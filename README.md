@@ -30,15 +30,19 @@
     ```
   Ex: `> mbtiles2folder -i tiles.mbtiles -o tiles_folder -tms 0`
     
-### folder2S3: 
-- Uplpad folder to Amazon S3 Bucket:  
+### folder2s3: 
+- Uplpad a tiles folder to Amazon S3 Bucket:  
     ``` bash 
-    > folder2s3 -i <input_folder> -b <bucket_name> -p [s3_prefix (optional)]  -r [region_name (optional)]    
+    > folder2s3 <input_folder>   
     ```
-  Ex: `> folder2s3 -i tiles_folder -b bucket_name`
+  Ex: `> folder2s3 tiles_folder`
  
-  And then:
+  Input S3 parameters:
 
-  ```> Enter AWS Access Key ID: Your_Access_Key_ID```
-
-  ```> Enter AWS Secret Access Key: Your_Secrect_Access_Key```
+  ```bash
+    > S3 Bucket name: <Your S3 Bucket name (required)>
+    > S3 Prefix: [Your S3 prefix (Optional. Press Enter to upload to the bucket root folder)]
+    > AWS Access Key ID: <Your_Access_Key_ID (required)>
+    > AWS Secret Access Key: <Your_Secrect_Access_Key (required)>
+    > AWS Region: <AWS region (Optional. Press Enter to choose default region)>
+  ```

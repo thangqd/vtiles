@@ -3,21 +3,7 @@ import sqlite3
 import json
 import argparse
 from tqdm import tqdm
-
-def safe_makedir(d):
-  if os.path.exists(d):
-    return
-  os.makedirs(d)
-
-def set_dir(d):
-  safe_makedir(d)
-  os.chdir(d)
-
-def flip_y(zoom, y, tms=0):
-    if tms==0:
-      return y 
-    else:
-      return (2**zoom-1) - y
+from utils import *
 
 def extract_metadata(cursor):
   """Extract metadata from MBTiles file."""
@@ -76,7 +62,7 @@ def convert_mbtiles_to_folder(input_filename, output_folder, tms=0):
       set_dir(str(x))
       y = row[2]
       if tms ==1:
-        y = flip_y(row[0], y, tms)
+        y = flip_y(z, y)
       output_file = open(str(y) + tile_format, 'wb')
       output_file.write(tile_data)
       output_file.close()
