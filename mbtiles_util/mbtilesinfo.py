@@ -74,8 +74,7 @@ def count_tiles(input_filename):
     elif table_or_view == 'view':
         cursor.execute("""SELECT COUNT(DISTINCT CONCAT(
 			CAST(zoom_level  AS TEXT), '|', 
-			CAST(tile_column  AS TEXT) , '|', CAST(tile_row  AS TEXT), '|', 
-			CAST(tile_data  AS TEXT)
+			CAST(tile_column  AS TEXT) , '|', CAST(tile_row  AS TEXT)
 			))
             FROM tiles""")
         num_tiles = cursor.fetchone()[0]
@@ -144,8 +143,7 @@ def main():
         elif check_vector(input_filename) == 0: # raster
             metadata = read_raster_metadata(input_filename)
             num_tiles = count_tiles(input_filename)
-            print("######")
-            print("Metadata:")
+            print("###### Metadata:")
             for key, value in metadata.items():
                 print(f"{key}: {value}")
             print(f"Total number of tiles: {num_tiles}")

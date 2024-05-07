@@ -1,7 +1,15 @@
-import sqlite3, argparse, sys, logging, time, os, json
+import sqlite3, argparse, sys, math, logging, time, os, json
 from tqdm import tqdm
-from utils import flip_y, num2deg
 logger = logging.getLogger(__name__)
+
+def num2deg(xtile, ytile, zoom):
+		n = 2.0 ** zoom
+		lon_deg = xtile / n * 360.0 - 180.0
+		lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
+		lat_deg = math.degrees(lat_rad)
+		return (lat_deg, lon_deg)
+def flip_y(zoom, y):
+  return (2**zoom-1) - y
 
 def mbtiles_connect(mbtiles_file):
   try:
@@ -87,17 +95,21 @@ def folder2mbtiles(input_folder, mbtiles_file, tms=0):
   cur = con.cursor()
   optimize_connection(cur)
   mbtiles_setup(cur)
-  try:
-    metadata = json.load(open(os.path.join(input_folder, 'metadata.json'), 'r'))
+  metadata_json = os.path.join(input_folder, 'metadata.json')
+  total_tiles = sum(len(files) for _, _, files in os.walk(input_folder))
+  
+  if os.path.exists(metadata_json):
+    metadata = json.load(open(metadata_json, 'r'))
+    total_tiles = total_tiles - 1 
     import_metadata(cur, metadata)
     logger.info('Importing metadata done.')
-  except IOError:      
+  else:
     logger.warning('metadata.json not found')
 
-  count = 0
-  start_time = time.time()
-  total_files = sum(len(files) for _, _, files in os.walk(input_folder))
-  with tqdm(total=total_files, desc="Coverting", unit="file") as pbar:
+  # count = 0
+  # start_time = time.time()
+  
+  with tqdm(total=total_tiles, desc="Coverting", unit="file") as pbar:
     for zoom_dir in get_dirs(input_folder):   
       z = int(zoom_dir)
       for row_dir in get_dirs(os.path.join(input_folder, zoom_dir)):
@@ -106,23 +118,25 @@ def folder2mbtiles(input_folder, mbtiles_file, tms=0):
           if current_file == ".DS_Store":
             logger.warning("The .DS_Store file will be ignored.")
           else:
-            file_name, ext = current_file.split('.',1)
-            f = open(os.path.join(input_folder, zoom_dir, row_dir, current_file), 'rb')
-            file_content = f.read()
-            f.close()
-            if tms == 1:
-              y = flip_y(int(z), int(file_name))
-            else:
-              y = int(file_name)
-            logger.debug(' Read tile from Zoom (z): %i\tCol (x): %i\tRow (y): %i' % (z, x, y))
-            cur.execute("""insert into tiles (zoom_level,
-                tile_column, tile_row, tile_data) values
-                (?, ?, ?, ?);""",
-                (z, x, y, sqlite3.Binary(file_content)))
-            pbar.update(1)
-            # count = count + 1
-            # if (count % 100) == 0:
-            #   logger.info(" %s tiles inserted (%d tiles/sec)" % (count, count / (time.time() - start_time)))
+            # file_name, ext = current_file.split('.',1)
+            file_name, ext = os.path.splitext(current_file)       
+            if ext in ('.png','.jpg','.webp', '.pbf'):
+              f = open(os.path.join(input_folder, zoom_dir, row_dir, current_file), 'rb')
+              file_content = f.read()
+              f.close()
+              if tms == 1:
+                y = flip_y(int(z), int(file_name))
+              else:
+                y = int(file_name)
+              logger.debug(' Read tile from Zoom (z): %i\tCol (x): %i\tRow (y): %i' % (z, x, y))
+              cur.execute("""insert into tiles (zoom_level,
+                  tile_column, tile_row, tile_data) values
+                  (?, ?, ?, ?);""",
+                  (z, x, y, sqlite3.Binary(file_content)))
+              pbar.update(1)
+              # count = count + 1
+              # if (count % 100) == 0:
+              #   logger.info(" %s tiles inserted (%d tiles/sec)" % (count, count / (time.time() - start_time)))
   try:
     name = os.path.basename(input_folder)
     create_metadata(cur, name, ext, tms)

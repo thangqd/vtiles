@@ -1,9 +1,20 @@
-import os, sys
+import os, math
 import sqlite3
 import json
 import argparse
 from tqdm import tqdm
-from utils import *
+
+def flip_y(zoom, y):
+  return (2**zoom-1) - y
+
+def safe_makedir(d):
+  if os.path.exists(d):
+    return
+  os.makedirs(d)
+
+def set_dir(d):
+  safe_makedir(d)
+  os.chdir(d)
 
 def extract_metadata(cursor):
   """Extract metadata from MBTiles file."""
@@ -27,11 +38,11 @@ def determine_tile_format(cursor):
   tile_format = cursor.fetchone()
   if tile_format:
       if tile_format[0] == 'png' or tile_format[0] == 'webp':
-          return '.png'
+          return 'png'
       elif tile_format[0] == 'jpg':
-          return '.jpg'
+          return 'jpg'
       elif tile_format[0] == 'pbf':
-          return '.pbf'
+          return 'pbf'
   return ''
 
 def count_total_tiles(cursor):
@@ -41,34 +52,58 @@ def count_total_tiles(cursor):
 
 def convert_mbtiles_to_folder(input_filename, output_folder, tms=0):
   """Convert MBTiles file to folder."""
-  os.makedirs(output_folder)
   connection = sqlite3.connect(input_filename)
   cursor = connection.cursor()  
+  os.mkdir("%s" % output_folder)
 
-  
   tile_format = determine_tile_format(cursor)
   total_tiles = count_total_tiles(cursor)
+  base_path = output_folder
+  
+  if not os.path.isdir(base_path):
+    os.makedirs(base_path)
+
   metadata = extract_metadata(cursor)
   write_metadata_to_json(metadata, output_folder)
  
-  os.chdir(output_folder)
+  # os.chdir(output_folder)
   cursor.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles order by zoom_level')
-  with tqdm(total=total_tiles, desc="Converting mbtiles to folder", unit="tile") as pbar:      
-    for row in cursor:
-      z = row[0]
-      x = row[1]
-      tile_data = row[3]
-      set_dir(str(z))
-      set_dir(str(x))
-      y = row[2]
-      if tms ==1:
-        y = flip_y(z, y)
-      output_file = open(str(y) + tile_format, 'wb')
-      output_file.write(tile_data)
-      output_file.close()
-      os.chdir('..')
-      os.chdir('..')
+  t = cursor.fetchone()
+  with tqdm(total=total_tiles, desc="Converting mbtiles to folder", unit="tile") as pbar:  
+    while t:
+      z = t[0]
+      x = t[1]
+      y = t[2]
+      if tms == 1:
+        y = flip_y(z,y)
+        tile_dir = os.path.join(base_path, str(z), str(x))
+      else:
+        tile_dir = os.path.join(base_path, str(z), str(x))
+      if not os.path.isdir(tile_dir):
+        os.makedirs(tile_dir)
+      tile = os.path.join(tile_dir,'%s.%s' % (y, tile_format))
+
+      f = open(tile, 'wb')
+      f.write(t[3])
+      f.close()
+      t = cursor.fetchone()
       pbar.update(1)
+
+    # for row in cursor:
+    #   z = row[0]
+    #   x = row[1]
+    #   tile_data = row[3]
+    #   set_dir(str(z))
+    #   set_dir(str(x))
+    #   y = row[2]
+    #   if tms == 1:
+    #     y = flip_y(z, y)
+    #   output_file = open(str(y) + tile_format, 'wb')
+    #   output_file.write(tile_data)
+    #   output_file.close()
+    #   os.chdir('..')
+    #   os.chdir('..')
+    # pbar.update(1)
 
   print('Converting mbtiles to folder done!')
   connection.close()

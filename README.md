@@ -23,13 +23,26 @@
     > mbtilesinfo <file_path>
     ```
   Ex: `> mbtilesinfo tiles.mbtiles`
+
 ### mbtiles2folder: 
-- Convert MBTiles file to folder:  
+- Convert MBTiles file to folder: (support raster MBTiles (.png, .jpg, .webp) and vector MBTiles (.pbf)) 
     ``` bash 
-    > mbtiles2folder -i <file_path> -o [output_folder (optional)] -tms [TMS scheme (optional 0 or 1, default is 0)]
+    > mbtiles2folder -i <file_name.mbtiles> -o [output_folder (optional)] -tms [TMS scheme (optional 0 or 1, default is 0)]
     ```
   Ex: `> mbtiles2folder -i tiles.mbtiles -o tiles_folder -tms 0`
-    
+  
+  Without -o parameter: output_folder has the same name with MBTiles file name at current directory 
+
+### folder2mbtiles: 
+- Convert a tiles folder to MBTiles file: (support raster tile (.png, .jpg, .webp) and vector tile (.pbf))
+    ``` bash 
+    > folder2mbtiles -i <input_folder> -o [file_name.mbtiles (optional)] -tms [TMS scheme (optional 0 or 1, default is 0)]
+    ```
+  Ex: `> folder2mbtiles -i tiles_folder -o tiles.mbtiles -tms 0`
+  
+  Without -o parameter: file_name.mbtiles has the same name with input_folder name at current directory 
+
+        
 ### folder2s3: 
 - Uplpad a tiles folder to Amazon S3 Bucket:  
     ``` bash 

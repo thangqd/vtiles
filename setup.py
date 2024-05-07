@@ -6,7 +6,8 @@ from setuptools import setup, find_packages
 requirements = [
     # "osmium~=3.6.0",
     "boto3~=1.34.72",
-    "tqdm~=4.66.2"
+    "tqdm~=4.66.2",
+    'mapbox_vector_tile~=2.0.1'
 ]
 
 setup(
@@ -19,13 +20,18 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     requires_python=">=3.0",
-    packages=find_packages(),
+    # packages=find_packages(),
+    packages=['mbtiles_util', 'mbtiles_util.osm_geofabrik'],
     entry_points={
         'console_scripts': [
             'mbtilesinfo = mbtiles_util.mbtilesinfo:main',
             'mbtiles2folder = mbtiles_util.mbtiles2folder:main',
             'folder2mbtiles = mbtiles_util.folder2mbtiles:main',  
-            'folder2s3 = mbtiles_util.folder2s3:main'   
+            'vectorfolder2s3 = mbtiles_util.vectorfolder2s3:main',
+            'rasterfolder2s3 = mbtiles_util.rasterfolder2s3:main',
+            # 'geojson2mbtiles = mbtiles_util.geojson2mbtiles:main',
+            'servefolder= mbtiles_util.servefolder:main',
+            'osmdownload = mbtiles_util.osmdownload:main'   
         ],
     },    
     install_requires=requirements,    
