@@ -84,7 +84,7 @@ if __name__ == '__main__':
   key_column = ""  # Optional key column for tiles
   disable_feature_ids = False  # Disable feature IDs
   gzip = False  # Enable gzip compression
-  verbose = True  # Enable verbose logging
+  verbose = False  # Enable verbose logging
   exclude_layers = []  # List of layers to exclude
   test_geometry = False  # Test geometry validity
 
