@@ -120,13 +120,13 @@ def main():
     input_filename = sys.argv[1]
     file_stat = os.stat(input_filename)
     file_size_mb = round(file_stat.st_size / (1024 * 1024),2)
-    file_created = datetime.datetime.fromtimestamp(file_stat.st_ctime).strftime("%Y-%m-%d %I:%M:%S %p")
+    # file_created = datetime.datetime.fromtimestamp(file_stat.st_ctime).strftime("%Y-%m-%d %I:%M:%S %p")
     file_last_modified = datetime.datetime.fromtimestamp(file_stat.st_mtime).strftime("%Y-%m-%d %I:%M:%S %p")
     # file_size = os.path.getsize(input_filename)
     # file_size_mb = round(file_size / (1024 * 1024),2)
     print('######')
     print("File size: ", file_size_mb, 'MB')
-    print("Date created: ", file_created)
+    # print("Date created: ", file_created)
     print("Last modified: ", file_last_modified)
     if (os.path.exists(input_filename)):
         if check_vector(input_filename) == 1: # vector

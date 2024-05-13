@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 # print(fp)
 # print("\nDownload will happen:")
 # fp = get_data("Helsinki", update=True)
-fp = "../data/nepal-latest.osm.pbf"
+fp = "../data/yemen-latest.osm.pbf"
 osm = OSM(fp)
 # drive_net = osm.get_network(network_type="driving")
 # buildings = osm.get_buildings()
