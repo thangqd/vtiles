@@ -15,4 +15,4 @@ data/
 references/
 dist/
 build/
-mbtiles_util.egg-info/
+tiles_util.egg-info/
