@@ -1,3 +1,18 @@
+Metadata-Version: 2.1
+Name: tiles-util
+Version: 1.0.5
+Summary: Vector Tiles Utilities
+Home-page: https://github.com/thangqd/tiles_util
+Author: Thang Quach
+Author-email: quachdongthang@gmail.com
+Classifier: Programming Language :: Python :: 3
+Classifier: Environment :: Console
+Classifier: Topic :: Scientific/Engineering :: GIS
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
 # Vector Tiles Utilities
 # Repository Renamed
 **Note:** This repository has been renamed from `mbtiles-util` to `tiles-util`. Please update your references accordingly.

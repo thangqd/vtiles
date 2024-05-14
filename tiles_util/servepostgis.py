@@ -73,8 +73,8 @@ if __name__ == '__main__':
   # main(docopt(__doc__, version=openmaptiles.__version__))
   url = "localhost"  # URL where the server will be hosted
   port = 8080  # Port number to listen on
-  pghost = "10.222.6.8"  # PostgreSQL host
-  pgport = 5434  # PostgreSQL port
+  pghost = "localhost"  # PostgreSQL host
+  pgport = 5432  # PostgreSQL port
   dbname = "openmaptiles"  # PostgreSQL database name
   user = "openmaptiles"  # PostgreSQL username
   password = "openmaptiles"  # PostgreSQL password
