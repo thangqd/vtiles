@@ -5,9 +5,10 @@ from setuptools import setup, find_packages
 
 requirements = [
     # "osmium~=3.6.0",
-    "boto3~=1.34.72",
+    # 'mapbox_vector_tile~=2.0.1',
     "tqdm~=4.66.2",
-    'mapbox_vector_tile~=2.0.1',
+    "boto3~=1.34.72",
+    "requests~=2.31.0",
     'asyncpg~=0.29.0',
     'tornado~=6.3.3',
     'betterproto~=1.2.5',
