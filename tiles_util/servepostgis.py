@@ -42,9 +42,8 @@ These legacy environment variables should not be used, but they are still suppor
 
 from docopt import docopt
 
-import openmaptiles
-from openmaptiles.pgutils import parse_pg_args
-from openmaptiles.postserve import Postserve
+from .openmaptiles.pgutils import parse_pg_args
+from .openmaptiles.postserve import Postserve
 
 
 # def main(args):
@@ -68,13 +67,12 @@ from openmaptiles.postserve import Postserve
 #         verbose=args.get('--verbose'),
 #     ).serve()
 
-
-if __name__ == '__main__':
-  # main(docopt(__doc__, version=openmaptiles.__version__))
+def main():
+    # main(docopt(__doc__, version=openmaptiles.__version__))
   url = "localhost"  # URL where the server will be hosted
   port = 8080  # Port number to listen on
-  pghost = "localhost"  # PostgreSQL host
-  pgport = 5432  # PostgreSQL port
+  pghost = "10.222.6.8"  # PostgreSQL host
+  pgport = 5434  # PostgreSQL port
   dbname = "openmaptiles"  # PostgreSQL database name
   user = "openmaptiles"  # PostgreSQL username
   password = "openmaptiles"  # PostgreSQL password
@@ -96,4 +94,6 @@ if __name__ == '__main__':
 
   # Start the server
   postserve.serve()
+if __name__ == '__main__':
+  main()
 

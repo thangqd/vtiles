@@ -14,7 +14,7 @@ from betterproto import which_one_of
 from docopt import DocoptExit
 from tabulate import tabulate
 
-from openmaptiles.vector_tile import TileFeature, TileLayer, Tile, TileGeomType
+from .vector_tile import TileFeature, TileLayer, Tile, TileGeomType
 
 T = TypeVar('T')
 T2 = TypeVar('T2')

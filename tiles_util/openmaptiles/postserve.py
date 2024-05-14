@@ -12,10 +12,10 @@ from tornado.log import access_log
 # noinspection PyUnresolvedReferences
 from tornado.web import Application, RequestHandler
 
-from openmaptiles.pgutils import show_settings, get_postgis_version, PgWarnings, \
+from .pgutils import show_settings, get_postgis_version, PgWarnings, \
     get_vector_layers
-from openmaptiles.sqltomvt import MvtGenerator
-from openmaptiles.tileset import Tileset
+from .sqltomvt import MvtGenerator
+from .tileset import Tileset
 
 class RequestHandledWithCors(RequestHandler):
     def set_default_headers(self):

@@ -10,7 +10,7 @@ from ascii_graph import Pyasciigraph
 # noinspection PyUnresolvedReferences
 from dataclasses_json import dataclass_json, config
 
-from openmaptiles.utils import round_td, Bbox, deg2num
+from .utils import round_td, Bbox, deg2num
 
 # If the terminal is not present, use this width
 # In github, comments inside the ``` block are about 88 characters

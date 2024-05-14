@@ -1,0 +1,9 @@
+[console_scripts]
+folder2mbtiles = tiles_util.folder2mbtiles:main
+mbtiles2folder = tiles_util.mbtiles2folder:main
+mbtilesinfo = tiles_util.mbtilesinfo:main
+osmdownload = tiles_util.osmdownload:main
+rasterfolder2s3 = tiles_util.rasterfolder2s3:main
+servefolder = tiles_util.servefolder:main
+servepostgis = tiles_util.servepostgis:main
+vectorfolder2s3 = tiles_util.vectorfolder2s3:main

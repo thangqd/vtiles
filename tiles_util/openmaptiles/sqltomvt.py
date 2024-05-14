@@ -6,8 +6,8 @@ from asyncpg import Connection
 # noinspection PyProtectedMember
 from docopt import DocoptExit
 
-from openmaptiles.tileset import Tileset, Layer
-from openmaptiles.utils import find_duplicates
+from .tileset import Tileset, Layer
+from .utils import find_duplicates
 
 
 class MvtGenerator:

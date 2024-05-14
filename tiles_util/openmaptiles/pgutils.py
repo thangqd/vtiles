@@ -4,8 +4,8 @@ from typing import Dict, List
 import asyncpg
 from asyncpg import UndefinedFunctionError, UndefinedObjectError, Connection
 
-from openmaptiles.perfutils import COLOR
-from openmaptiles.utils import coalesce, print_err
+from .perfutils import COLOR
+from .utils import coalesce, print_err
 
 
 async def get_postgis_version(conn: Connection) -> str:
