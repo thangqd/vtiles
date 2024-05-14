@@ -1,4 +1,4 @@
-# MBTiles Utilities
+# Vector Tiles Utilities
 
 ## Installation: 
 - Using pip install (Windows/ Linux):
