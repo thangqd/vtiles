@@ -11,9 +11,9 @@ con = sqlite3.connect(MBTILES)
 cursor = con.cursor()
 
 # tile coordinates
-zoom = 0
-col = 0
-row = 0
+zoom = 6
+col = 45
+row = 35
 
 cursor.execute(
     """SELECT tile_data FROM tiles 
