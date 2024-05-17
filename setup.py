@@ -15,7 +15,8 @@ requirements = [
     'docopt-ng~=0.7.2',
     'deprecated~=1.2.13',
     'ascii_graph~=1.5.1',
-    'dataclasses-json~=0.5.6'
+    'dataclasses-json~=0.5.6',
+    'click~=8.1.7'
 ]
 
 setup(
@@ -42,6 +43,8 @@ setup(
             'osmdownload = tiles_util.osmdownload:main'   
         ],
     },    
+    scripts=["bin/mbtiles2s3", "bin/utils.py"], # utils.py is just a demo,
+
     install_requires=requirements,    
     classifiers=[
         'Programming Language :: Python :: 3',

@@ -1,8 +1,12 @@
-# https://python.plainenglish.io/debugging-mbtiles-in-python-8f4db8fbeacc
+import geopandas as gpd
+import gzip
+from io import BytesIO
+import mapbox_vector_tile as mvt
+import json
 import sqlite3
 
 # connect to tiles
-MBTILES = "/data/yemen.mbtiles"
+MBTILES = "../data/districtZZZ.mbtiles"
 con = sqlite3.connect(MBTILES)
 cursor = con.cursor()
 
@@ -19,13 +23,33 @@ cursor.execute(
 )
 data = cursor.fetchall()
 tile_data = data[0][0]
-
-import gzip
-from io import BytesIO
-import mapbox_vector_tile as mvt
+print(tile_data)
 
 raw_data = BytesIO(tile_data)
 
 with gzip.open(raw_data, "rb") as f:
  tile = f.read()
 decoded_data = mvt.decode(tile)
+
+
+# get tile as geodataframe
+
+# unpack layers
+layers = [{'name': key, **decoded_data[key]} for key in decoded_data]
+
+# this list will contain features ready to be stored in a geojson dict
+features = []
+
+# unpack features for each layer into the list
+for layer in layers:
+    for feature in layer['features']:
+        features.append({'layer': layer['name'],
+                         'geometry': feature['geometry'],
+                         'id': feature['id'],
+                         'properties': {'layer': layer['name'],'id': feature['id'], **feature['properties']},
+                         'type': 'Feature'})
+with open('mytile.json', 'w') as file:
+    data = json.dumps({'type': 'FeatureCollection', 'features': features})
+    file.write(data)
+feature_df = gpd.read_file('mytile.json', driver='GeoJSON')
+print (feature_df)
