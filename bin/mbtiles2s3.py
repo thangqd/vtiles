@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# python mbtiles2s3.py ../data/nepal.mbtiles s3://ss-vector-tile-data/sovereign/v20240410/mbtiles2s3/ -p
+# Install aws cli and run aws configure to input credentials first and then:
+# python mbtiles2s3.py ../data/administrative.mbtiles s3://ss-vector-tile-data/sovereign/v20240410/administrative -p
 
 import json
 import logging
