@@ -21,7 +21,7 @@ requirements = [
 
 setup(
     name='tiles_util',
-    version='1.0.5',
+    version='1.0.6',
     author = 'Thang Quach',
     author_email= 'quachdongthang@gmail.com',
     url='https://github.com/thangqd/tiles_util',
@@ -37,13 +37,16 @@ setup(
             'folder2mbtiles = tiles_util.folder2mbtiles:main',  
             'vectorfolder2s3 = tiles_util.vectorfolder2s3:main',
             'rasterfolder2s3 = tiles_util.rasterfolder2s3:main',
+            'folder2s3 = tiles_util.folder2s3:main',
             # 'geojson2mbtiles = mbtiles_util.geojson2mbtiles:main',
             'servefolder= tiles_util.servefolder:main',
             'servepostgis= tiles_util.servepostgis:main',
-            'osmdownload = tiles_util.osmdownload:main'   
+            'osmdownload = tiles_util.osmdownload:main',
+            'mbtiles2s3 = tiles_util.mbtiles2s3:main',
+            'flipy = tiles_util.flipy:main'     
         ],
     },    
-    scripts=["bin/mbtiles2s3", "bin/utils.py"], # utils.py is just a demo,
+    scripts=["bin/utils.py"], # utils.py is just a demo,
 
     install_requires=requirements,    
     classifiers=[

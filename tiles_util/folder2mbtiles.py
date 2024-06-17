@@ -8,6 +8,7 @@ def num2deg(xtile, ytile, zoom):
 		lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
 		lat_deg = math.degrees(lat_rad)
 		return (lat_deg, lon_deg)
+
 def flip_y(zoom, y):
   return (2**zoom-1) - y
 
@@ -73,8 +74,8 @@ def create_metadata(cur, name, format, tms=0):
   ("center", centerString), 
   ("minzoom", minzoom), 
   ("maxzoom", maxzoom), 
-  ("desccription", 'MBTiles converted from a tiles folder using mbtiles-util'), 
-  ("attribution", '<a href="https://github.com/thangqd/mbtiles_util" target="_blank">&copy; mbtiles-util</a>'),
+  ("desccription", 'MBTiles converted from a tiles folder using tiles-util'), 
+  ("attribution", '<a href="https://github.com/thangqd/tiles_util" target="_blank">&copy; tiles-util</a>'),
   ("type", ''),
   ("version", '')
 ])
