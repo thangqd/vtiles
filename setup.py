@@ -16,7 +16,11 @@ requirements = [
     'deprecated~=1.2.13',
     'ascii_graph~=1.5.1',
     'dataclasses-json~=0.5.6',
-    'click~=8.1.7'
+    'click~=8.1.7',
+    'fiona~=1.9.4',
+    'networkx~=2.8.8',
+    'scipy~=1.11.3',
+    'shapely~=2.0.1'
 ]
 
 setup(
@@ -43,9 +47,11 @@ setup(
             'servepostgis= tiles_util.servepostgis:main',
             'osmdownload = tiles_util.osmdownload:main',
             'mbtiles2s3 = tiles_util.mbtiles2s3:main',
-            'flipy = tiles_util.flipy:main'     
+            'flipy = tiles_util.flipy:main',
+            "centerline=tiles_util.label_centerlines.cli:main"  
         ],
     },    
+
     scripts=["bin/utils.py"], # utils.py is just a demo,
 
     install_requires=requirements,    
