@@ -48,12 +48,12 @@ setup(
             'osmdownload = tiles_util.osmdownload:main',
             'mbtiles2s3 = tiles_util.mbtiles2s3:main',
             'flipy = tiles_util.flipy:main',
-            "centerline=tiles_util.label_centerlines.cli:main"  
+            # "centerline=tiles_util.label_centerlines.cli:main"  
+            'centerline=tiles_util.centerline:main'
         ],
     },    
 
-    scripts=["bin/utils.py"], # utils.py is just a demo,
-
+    # scripts=["bin/utils.py"], # utils.py is just a demo,
     install_requires=requirements,    
     classifiers=[
         'Programming Language :: Python :: 3',
