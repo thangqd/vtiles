@@ -121,7 +121,7 @@ def folder2mbtiles(input_folder, mbtiles_file, tms=0):
           else:
             # file_name, ext = current_file.split('.',1)
             file_name, ext = os.path.splitext(current_file)       
-            if ext in ('.png','.jpg','.webp', '.pbf'):
+            if ext in ('.png','.jpg','.jpeg','.webp', '.pbf'):
               f = open(os.path.join(input_folder, zoom_dir, row_dir, current_file), 'rb')
               file_content = f.read()
               f.close()
@@ -133,6 +133,7 @@ def folder2mbtiles(input_folder, mbtiles_file, tms=0):
               cur.execute("""insert into tiles (zoom_level,
                   tile_column, tile_row, tile_data) values
                   (?, ?, ?, ?);""",
+                  # (z, x, y, file_content))
                   (z, x, y, sqlite3.Binary(file_content)))
               pbar.update(1)
               # count = count + 1

@@ -69,13 +69,13 @@ from .openmaptiles.postserve import Postserve
 
 def main():
     # main(docopt(__doc__, version=openmaptiles.__version__))
-  url = "localhost"  # URL where the server will be hosted
-  port = 8080  # Port number to listen on
-  pghost = "localhost"  # PostgreSQL host
-  pgport = 5432  # PostgreSQL port
-  dbname = "openmaptiles"  # PostgreSQL database name
-  user = "openmaptiles"  # PostgreSQL username
-  password = "openmaptiles"  # PostgreSQL password
+  url = "10.222.6.8"  # URL where the server will be hosted
+  port = 9999  # Port number to listen on
+  pghost = "10.222.6.8"  # PostgreSQL host
+  pgport = 5433  # PostgreSQL port
+  dbname = "osm"  # PostgreSQL database name
+  user = "postgres"  # PostgreSQL username
+  password = "postgresql"  # PostgreSQL password
   layers = []  # List of layers to include
   tileset_path = "./openmaptiles/openmaptiles.yaml"  # Path to tileset JSON file
   sql_file = None  # Optional SQL file containing custom queries

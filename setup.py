@@ -42,13 +42,12 @@ setup(
             'vectorfolder2s3 = tiles_util.vectorfolder2s3:main',
             'rasterfolder2s3 = tiles_util.rasterfolder2s3:main',
             'folder2s3 = tiles_util.folder2s3:main',
-            # 'geojson2mbtiles = mbtiles_util.geojson2mbtiles:main',
+            'geojson2mbtiles = tiles_util.geojson2mbtiles:main',
             'servefolder= tiles_util.servefolder:main',
             'servepostgis= tiles_util.servepostgis:main',
             'osmdownload = tiles_util.osmdownload:main',
             'mbtiles2s3 = tiles_util.mbtiles2s3:main',
             'flipy = tiles_util.flipy:main',
-            # "centerline=tiles_util.label_centerlines.cli:main"  
             'centerline=tiles_util.centerline:main'
         ],
     },    

@@ -44,30 +44,19 @@
   
   Without -o parameter: file_name.mbtiles has the same name with input_folder name at current directory 
 
-        
-### vectorfolder2s3: 
-- Uplpad a vector tiles folder to Amazon S3 Bucket:  
+### geoson2mbtiles: 
+- Convert geojson file to mbtiles (python wrapper for tippecanoe in Linux)
     ``` bash 
-    > vectorfolder2s3 <input_folder>   
+    > geojson2mbtiles -i <input files> -z <maxzoom> -o <output> -t <tippecanoe path> --extra-args <drop-densest-as-needed or coalesce-densest-as-needed or extend-zooms-if-still-dropping>
     ```
-  Ex: `> vectorfolder2s3 vectortiles_folder`
- 
-  Input S3 parameters:
+  Ex: ` > geojson2mbtiles -i state.geojson district.geojson -z9 -o state_district.mbtiles -t /usr/local/bin/ --extra-args coalesce-densest-as-needed`  
 
-  ```bash
-    > S3 Bucket name: <Your S3 Bucket name (required)>
-    > S3 Prefix: [Your S3 prefix (Optional. Press Enter to upload to the bucket root folder)]
-    > AWS Access Key ID: <Your_Access_Key_ID (required)>
-    > AWS Secret Access Key: <Your_Secrect_Access_Key (required)>
-    > AWS Region: <AWS region (Optional. Press Enter to choose default region)>
-  ```
-
-### rasterfolder2s3: 
-- Uplpad a raster tiles folder to Amazon S3 Bucket:  
+### folder2s3: 
+- Uplpad a vector/ raster tiles folder to Amazon S3 Bucket:  
     ``` bash 
-    > rasterfolder2s3 <input_folder>   
+    > folder2s3 -i <input_folder>  -format <'pbf' or 'png' or 'jpg' or 'jpeg' or 'webp'>
     ```
-  Ex: `> rasterfolder2s3 rastertiles_folder`
+  Ex: `> folder2s3 -i vectortiles_folder -format pbf`
  
   Input S3 parameters:
 
