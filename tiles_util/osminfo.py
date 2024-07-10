@@ -1,51 +1,55 @@
-import sys
-import struct
+import osmium as o
+import sys, os, datetime
 
-def list_layers(osm_pbf_file):
-    layers = []
-    with open(osm_pbf_file, 'rb') as f:
-        # Skip the file header
-        f.seek(4)
+class FileStatsHandler(o.SimpleHandler):
 
-        while True:
-            # Read the blob header length
-            header_length_bytes = f.read(4)
-            if not header_length_bytes:
-                break
+    def __init__(self):
+        super(FileStatsHandler, self).__init__()
+        self.nodes = 0
+        self.ways = 0
+        self.rels = 0
 
-            blob_header_length = struct.unpack('!I', header_length_bytes)[0]
+    def node(self, n):
+        self.nodes += 1
 
-            # Read the blob header
-            blob_header = f.read(blob_header_length)
-            blob_data = f.read()
+    def way(self, w):
+        self.ways += 1
 
-            # Extract layer information
-            if b'OSMDataLayer' in blob_header:
-                layer_info = {}
-                layer_info['header'] = blob_header
-                # Extract other information about the layer if needed
-                layers.append(layer_info)
+    def relation(self, r):
+        self.rels += 1
 
-    return layers
+
+def main(osmfile):
+    h = FileStatsHandler()
+
+    h.apply_file(osmfile)
+
+    print("Nodes: %d" % h.nodes)
+    print("Ways: %d" % h.ways)
+    print("Relations: %d" % h.rels)
+
+    return 0
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python list_osm_layers.py <osm_pbf_file>")
+        print(f"Usage: {sys.argv[0]} <path_to_osm_file.osm.pbf>")
         sys.exit(1)
-    
-    osm_file = sys.argv[1]
-
-    try:
-        layers = list_layers(osm_file)
-        if layers:
-            print("Layers in the OSM PBF file:")
-            for index, layer in enumerate(layers, start=1):
-                print(f"Layer {index}: {layer}")
-        else:
-            print("No layers found in the OSM PBF file.")
-    except Exception as e:
-        print("Error:", e)
-        sys.exit(1)
+    osmfile = sys.argv[1]    
+    file_stat = os.stat(osmfile)
+    file_size_mb = round(file_stat.st_size / (1024 * 1024),2)
+    # file_created = datetime.datetime.fromtimestamp(file_stat.st_ctime).strftime("%Y-%m-%d %I:%M:%S %p")
+    file_last_modified = datetime.datetime.fromtimestamp(file_stat.st_mtime).strftime("%Y-%m-%d %I:%M:%S %p")
+    print('######')
+    print("File size: ", file_size_mb, 'MB')
+    # print("Date created: ", file_created)
+    print("Last modified: ", file_last_modified)
+    print('######')
+    h = FileStatsHandler()
+    h.apply_file(osmfile)
+    print("Nodes: %d" % h.nodes)
+    print("Ways: %d" % h.ways)
+    print("Relations: %d" % h.rels)
+    os._exit(0)
 
 if __name__ == "__main__":
     main()

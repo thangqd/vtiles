@@ -20,7 +20,9 @@ requirements = [
     'fiona~=1.9.4',
     'networkx~=2.8.8',
     'scipy~=1.11.3',
-    'shapely~=2.0.1'
+    'shapely~=2.0.1',
+    'osmium~=3.7.0',
+    'mapbox-vector-tile[proj]~=2.1.0'
 ]
 
 setup(
@@ -45,7 +47,13 @@ setup(
             'geojson2mbtiles = tiles_util.geojson2mbtiles:main',
             'servefolder= tiles_util.servefolder:main',
             'servepostgis= tiles_util.servepostgis:main',
+            'osminfo = tiles_util.osminfo:main',
+            'osm2geojson = tiles_util.osm2geojson:main',
             'osmdownload = tiles_util.osmdownload:main',
+            'osmreplication = tiles_util.osmreplication:main',
+            'osmpub = tiles_util.osmpub:main',
+            'pbfinfo = tiles_util.pbfinfo:main',
+            'pbf2geojson = tiles_util.pbf2geojson:main',
             'mbtiles2s3 = tiles_util.mbtiles2s3:main',
             'flipy = tiles_util.flipy:main',
             'centerline=tiles_util.centerline:main'

@@ -40,11 +40,11 @@ while getopts ":c:dv" flag; do
 done
 
 # database connection variables
-DB_NAME="natural_earth"
-DB_HOST=""
-DB_PORT=""
-DB_USER=""
-DB_PW=""
+DB_NAME="osm"
+DB_HOST="10.222.6.8"
+DB_PORT="5433"
+DB_USER="postgres"
+DB_PW="postgresql"
 
 # Check if we're using a config file
 if [[ -r $CONFIG_FILE ]]; then source $CONFIG_FILE
@@ -52,7 +52,7 @@ elif [ -r dbcredentials.sh ]; then source dbcredentials.sh
 fi
 
 # check our connection string before we do any downloading
-psql "dbname='postgres' host='$DB_HOST' port='$DB_PORT' user='$DB_USER' password='$DB_PW'" -c "\q"
+psql "dbname='osm' host='$DB_HOST' port='$DB_PORT' user='$DB_USER' password='$DB_PW'" -c "\q"
 
 # array of natural earth dataset URLs
  dataurls=(
@@ -129,8 +129,8 @@ psql "dbname='postgres' host='$DB_HOST' port='$DB_PORT' user='$DB_USER' password
 # remove old database if -d flag is set and create a new one
 if [[ "$DROP_DB" = true ]];
 then
-  psql "dbname='postgres' host='$DB_HOST' port='$DB_PORT' user='$DB_USER' password='$DB_PW'" -c "DROP DATABASE IF EXISTS $DB_NAME"
-  psql "dbname='postgres' host='$DB_HOST' port='$DB_PORT' user='$DB_USER' password='$DB_PW'" -c "CREATE DATABASE $DB_NAME"
+  psql "dbname='osm' host='$DB_HOST' port='$DB_PORT' user='$DB_USER' password='$DB_PW'" -c "DROP DATABASE IF EXISTS $DB_NAME"
+  psql "dbname='osm' host='$DB_HOST' port='$DB_PORT' user='$DB_USER' password='$DB_PW'" -c "CREATE DATABASE $DB_NAME"
 fi
 
 # Create postgis extension if it doesn't exist
