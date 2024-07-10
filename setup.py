@@ -54,6 +54,7 @@ setup(
             'osmpub = tiles_util.osmpub:main',
             'pbfinfo = tiles_util.pbfinfo:main',
             'pbf2geojson = tiles_util.pbf2geojson:main',
+            'pbfview = tiles_util.pbfview:main',
             'mbtiles2s3 = tiles_util.mbtiles2s3:main',
             'flipy = tiles_util.flipy:main',
             'centerline=tiles_util.centerline:main'
