@@ -44,7 +44,7 @@ def upload_files(bucket_name, input_folder, s3_prefix='', content_type=None, con
             for future in futures:
                 future.result()
 
-def folder2s3(input_folder, format='pbf', bucket_name='', s3_prefix='', aws_access_key_id=None, aws_secret_access_key=None, aws_region=None):
+def folder2s3(input_folder, format='', bucket_name='', s3_prefix='', aws_access_key_id=None, aws_secret_access_key=None, aws_region=None):
     session = boto3.Session(
         region_name=aws_region,
         aws_access_key_id=aws_access_key_id,
@@ -72,7 +72,7 @@ def folder2s3(input_folder, format='pbf', bucket_name='', s3_prefix='', aws_acce
 def main():
     parser = argparse.ArgumentParser(description='Upload a tiles folder to S3.')
     parser.add_argument('-i', type=str, required=True, help='The tiles folder to upload.')
-    parser.add_argument('-format', type=str, default='pbf', choices=['pbf', 'png', 'jpg', 'jpeg', 'webp'], help='The format of the files to upload.')
+    parser.add_argument('-format', type=str, required=True, choices=['pbf', 'png', 'jpg', 'jpeg', 'webp'], help='The format of the files to upload.')
     args = parser.parse_args()
 
     input_folder = args.i
