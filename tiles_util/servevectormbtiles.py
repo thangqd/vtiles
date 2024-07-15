@@ -16,9 +16,9 @@ except ImportError:
     MBTILES_ABSPATH = None
     MBTILES_TILE_EXT = '.pbf'
     MBTILES_ZOOM_OFFSET = 0
-    MBTILES_HOST = 'localhost'
+    MBTILES_HOST = '0.0.0.0'
     MBTILES_PORT = 8005
-    MBTILES_SERVE = False
+    MBTILES_SERVE = True
     USE_OSGEO_TMS_TILE_ADDRESSING = True
 
 # Supported image extensions for vector tiles

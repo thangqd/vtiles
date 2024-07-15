@@ -27,7 +27,7 @@ except ImportError:
     MBTILES_ABSPATH = None
     MBTILES_TILE_EXT = '.png'
     MBTILES_ZOOM_OFFSET = 0
-    MBTILES_HOST = 'localhost'
+    MBTILES_HOST = ''
     MBTILES_PORT = 8005
     MBTILES_SERVE = False
     USE_OSGEO_TMS_TILE_ADDRESSING = True
