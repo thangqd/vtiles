@@ -49,34 +49,6 @@ class TileRequestHandler(http.server.BaseHTTPRequestHandler):
     def envelopeToBoundsSQL(self, tile):
         return f'ST_TileEnvelope({tile["zoom"]}, {tile["x"]}, {tile["y"]})'
 
-    # def envelopeToSQL(self, tile):
-    #     sql_queries = []
-    #     for table_name, table_config in config['tables'].items():
-    #         if 'min_zoom' in table_config and tile['zoom'] < table_config['min_zoom']:
-    #             continue
-    #         if 'max_zoom' in table_config and tile['zoom'] > table_config['max_zoom']:
-    #             continue
-            
-    #         tbl = table_config.copy()
-    #         tbl['env'] = self.envelopeToBoundsSQL(tile)
-    #         sql_tmpl = """
-    #             WITH 
-    #             bounds AS (
-    #                 SELECT {env} AS geom, 
-    #                     {env}::box2d AS b2d
-    #             ),
-    #             mvtgeom AS (
-    #                 SELECT ST_AsMVTGeom(ST_Transform(t.{geomColumn}, 3857), bounds.b2d) AS geom, 
-    #                     {attrColumns}
-    #                 FROM {table} t, bounds
-    #                 WHERE ST_Intersects(t.{geomColumn}, ST_Transform(bounds.geom, {srid}))
-    #             ) 
-    #             SELECT '{table_name}' AS layer, ST_AsMVT(mvtgeom.*, '{table_name}') FROM mvtgeom
-    #         """
-    #         sql_queries.append(sql_tmpl.format(table_name=table_name, **tbl))
-        
-    #     return sql_queries
-
     def envelopeToSQL(self, tile):
         sql_queries = []
         for table_name, table_config in config['tables'].items():
@@ -86,31 +58,25 @@ class TileRequestHandler(http.server.BaseHTTPRequestHandler):
                 continue
             
             tbl = table_config.copy()
-            area_condition = ""
-            if 'area_thresholds' in tbl:
-                for threshold in tbl['area_thresholds']:
-                    if tile['zoom'] == threshold['zoom']:
-                        area_condition = f" AND ST_Area(t.{tbl['geomColumn']}) > {threshold['area']}"
-                        break
-
-            sql_tmpl = f"""
+            tbl['env'] = self.envelopeToBoundsSQL(tile)
+            sql_tmpl = """
                 WITH 
                 bounds AS (
-                    SELECT ST_TileEnvelope({tile["zoom"]}, {tile["x"]}, {tile["y"]}) AS geom, 
-                        ST_TileEnvelope({tile["zoom"]}, {tile["x"]}, {tile["y"]})::box2d AS b2d
+                    SELECT {env} AS geom, 
+                        {env}::box2d AS b2d
                 ),
                 mvtgeom AS (
-                    SELECT ST_AsMVTGeom(ST_Transform(t.{tbl["geomColumn"]}, 3857), bounds.b2d) AS geom, 
-                        {tbl["attrColumns"]}
-                    FROM {tbl["table"]} t, bounds
-                    WHERE ST_Intersects(t.{tbl["geomColumn"]}, ST_Transform(bounds.geom, {tbl["srid"]}))
-                    {area_condition}
+                    SELECT ST_AsMVTGeom(ST_Transform(t.{geomColumn}, 3857), bounds.b2d) AS geom, 
+                        {attrColumns}
+                    FROM {table} t, bounds
+                    WHERE ST_Intersects(t.{geomColumn}, ST_Transform(bounds.geom, {srid}))
                 ) 
                 SELECT '{table_name}' AS layer, ST_AsMVT(mvtgeom.*, '{table_name}') FROM mvtgeom
             """
-            sql_queries.append(sql_tmpl)
+            sql_queries.append(sql_tmpl.format(table_name=table_name, **tbl))
         
         return sql_queries
+
 
     def sqlToPbf(self, sql_queries):
         if not self.DATABASE_CONNECTION:
