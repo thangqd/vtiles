@@ -40,6 +40,7 @@ setup(
         'console_scripts': [
             'mbtilesinfo = tiles_util.mbtilesinfo:main',
             'mbtiles2folder = tiles_util.mbtiles2folder:main',
+            'pmtiles2folder = tiles_util.pmtiles2folder:main',
             'folder2mbtiles = tiles_util.folder2mbtiles:main',  
             'vectorfolder2s3 = tiles_util.vectorfolder2s3:main',
             'rasterfolder2s3 = tiles_util.rasterfolder2s3:main',
@@ -47,6 +48,7 @@ setup(
             'geojson2mbtiles = tiles_util.geojson2mbtiles:main',
             'servefolder= tiles_util.servefolder:main',
             'servepostgis= tiles_util.servepostgis:main',
+            'servevectorpmtiles=tiles_util.servevectorpmtiles:main',
             'osminfo = tiles_util.osminfo:main',
             'osm2geojson = tiles_util.osm2geojson:main',
             'osmdownload = tiles_util.osmdownload:main',
