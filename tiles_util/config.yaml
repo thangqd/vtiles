@@ -1,0 +1,38 @@
+database:
+  user: 'postgres'
+  password: 'postgresql'
+  host: '10.222.6.8'
+  port: '5433'
+  database: 'osm'
+
+http_server:
+  host: ''
+  port: 8005
+
+tables:
+  lakes:
+    table: 'ne_10m_lakes'
+    srid: 3857
+    geomColumn: 'wkb_geometry'
+    attrColumns: 'ogc_fid, name'
+  # roads:
+  #   table: 'roads'
+  #   srid: 3857
+  #   geomColumn: 'geom'
+  #   attrColumns: 'id, road_name'
+  parks:
+    table: 'osm_park_polygon'
+    srid: 4326
+    geomColumn: 'geometry'
+    attrColumns: 'id, name'
+  poi:
+    table: 'osm_poi_polygon'
+    srid: 4326
+    geomColumn: 'geometry'
+    attrColumns: 'id, name'
+  road:
+    table: 'osm_highway_linestring'
+    srid: 4326
+    geomColumn: 'geometry'
+    attrColumns: 'id, name'
+  
