@@ -6,10 +6,10 @@ import argparse
 def geojson_to_mbtiles(      
         filepaths,
         tippecanoe_dir,
-        mbtiles_file='out.mbtiles',
-        maxzoom=6,
-        minzoom=0,
-        extra_args=(),
+        mbtiles_file,
+        maxzoom,
+        minzoom,
+        extra_args=()
     ):
     logging.basicConfig(level=logging.INFO)
     
