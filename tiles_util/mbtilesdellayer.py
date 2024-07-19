@@ -2,14 +2,11 @@ import sqlite3
 import mapbox_vector_tile
 import argparse
 import shutil
-import gzip,zlib
-import geojson, json
-from collections import defaultdict
-from io import BytesIO
-import csv
+import gzip
+import json
+from tqdm import tqdm
 
-
-def repair_wkt(data):
+def fix_wkt(data):
     result = []
     for key in data:
         feature_collection = data[key]
@@ -50,180 +47,91 @@ def repair_wkt(data):
         })
     return result
 
+def update_metadata(conn, layers_to_delete):
+    cursor = conn.cursor()
+    
+    # Read metadata
+    cursor.execute("SELECT name, value FROM metadata WHERE name = 'json'")
+    metadata = cursor.fetchone()
+    
+    if metadata:
+        metadata_name, metadata_value = metadata
+        metadata_json = json.loads(metadata_value)
+        
+        # Update vector_layers
+        vector_layers = metadata_json.get('vector_layers', [])
+        updated_layers = [layer for layer in vector_layers if layer['id'] not in layers_to_delete]
+        
+        # Update tilestats
+        tilestats = metadata_json.get('tilestats', {})
+        updated_stats = tilestats.copy()
+        updated_stats['layerCount'] = len(updated_layers)
+        updated_stats['layers'] = [stat for stat in updated_stats.get('layers', []) if stat['layer'] not in layers_to_delete]
+        
+        metadata_json['vector_layers'] = updated_layers
+        metadata_json['tilestats'] = updated_stats
+        
+        # Update metadata table
+        cursor.execute("DELETE FROM metadata WHERE name = 'json'")
+        cursor.execute("INSERT INTO metadata (name, value) VALUES ('json', ?)", (json.dumps(metadata_json),))
+    else:
+        print("No json metadata found to update.")
 
 
-def delete_layer_from_mbtiles(input_path, output_path, layer_name):
+def delete_layers_from_mbtiles(input_path, output_path, layers_to_delete):
     # Copy the input MBTiles file to the output path
     shutil.copyfile(input_path, output_path)
 
     # Connect to the copied MBTiles file
-    conn = sqlite3.connect(output_path)
-    cursor = conn.cursor()
+    with sqlite3.connect(output_path) as conn:
+        # Update metadata
+        update_metadata(conn, layers_to_delete)
 
-    # Select all tiles
-    # cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles where zoom_level=0 and tile_column=0 and tile_row=0  ")
-    cursor.execute("SELECT tile_data FROM tiles where zoom_level=0 and tile_column=0 and tile_row=0")
-    tiles = cursor.fetchone()
-    tile_data = tiles[0]
-    print('origin:' ,tile_data)
-    print('#######################')
-    # for zoom_level, tile_column, tile_row, tile_data in tiles:
-    # try:
-    #     decompressed_data = gzip.decompress(tile_data)
-    #     print('gzib')
-    # except (OSError, EOFError):        
-    #     decompressed_data = tile_data  # Assume data is not compressed
-    #     print('no gzib')
-    # print('original: ', tile_data)
-    with BytesIO(tile_data) as byte_stream:
-        decompressed_data = gzip.decompress(byte_stream.getvalue())
-    # decompressed_data = gzip.decompress(tile_data)
-    print('decompressed:' ,decompressed_data)
-    print('#######################')
+        cursor = conn.cursor()
 
-    decoded_tile = None
-    # decompressed_data = repair_wkt(decompressed_data)
+        # Select all tiles
+        cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles")
+        tiles = cursor.fetchall()
 
-    # # Decode the tile data
-    decoded_tile = mapbox_vector_tile.decode(decompressed_data)
-    # print('decoded:', decoded_tile)
-    decoded_tile = repair_wkt(decoded_tile)
-    # print('repaired:', decoded_tile)
+        # Create tqdm progress bar
+        for tile in tqdm(tiles, desc="Processing tiles", unit="tile"):
+            zoom_level, tile_column, tile_row, tile_data = tile
 
+            # Decompress the tile data if it is compressed
+            if tile_data[:2] == b'\x1f\x8b':
+                tile_data = gzip.decompress(tile_data)
 
-    # print('decoded',mapbox_vector_tile.decode(encoded) )
-    # # Remove the specified layer if it exists
-    # # try:
-    print('decoded: ', decoded_tile)
-    print('#################')
-    decoded_tile_deleted = [item for item in decoded_tile if item["name"] != layer_name]
-    # print ('decoded_tile_deleted: ', decoded_tile_deleted)
-    # for layername, layerdata in decoded_tile:
-    #     if (layer_name == layername):
-    #         print(f"Layer: {layername}")
-    #     del decoded_tile[0]
-    #     break
+            # Decode the tile data
+            decoded_tile = mapbox_vector_tile.decode(tile_data)
+            decoded_tile = fix_wkt(decoded_tile)
 
-    # # print (decoded_tile)  
-    encoded_tile = mapbox_vector_tile.encode(decoded_tile_deleted)
-    with BytesIO(encoded_tile) as byte_stream:
-        encoded_tile_gzib = gzip.compress(byte_stream.getvalue())
-    # encoded_tile_gzib = gzip.compress(encoded_tile)
-    print('encoded: ', encoded_tile)
-    print('#################')
+            # Remove the specified layers
+            decoded_tile_filtered = [item for item in decoded_tile if item["name"] not in layers_to_delete]
 
+            if len(decoded_tile_filtered) < len(decoded_tile):
+                # Encode and compress the modified tile
+                try:
+                    encoded_tile = mapbox_vector_tile.encode(decoded_tile_filtered)
+                    encoded_tile_gzip = gzip.compress(encoded_tile)
 
-    # decoded_again = mapbox_vector_tile.decode(encoded_tile)
-    # print('decoded_again: ', decoded_again)
-    # print('#################')
-    # # # Serialize and encode the dictionary to JSON bytes
-    # json_data = json.dumps(decoded_tile)
-    # byte_data = json_data.encode('utf-8')
+                    # Update the tile data in the database
+                    cursor.execute("""
+                        UPDATE tiles
+                        SET tile_data = ?
+                        WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?""",
+                        (encoded_tile_gzip, zoom_level, tile_column, tile_row))
+                except Exception as e:
+                    print(f"Error processing tile {zoom_level}/{tile_column}/{tile_row}: {e}")
 
-    # # Compress the byte data
-    # buffer = BytesIO()
-    # with gzip.GzipFile(fileobj=buffer, mode='wb') as gz_file:
-    #     gz_file.write(byte_data)
-    # compressed_data = buffer.getvalue()
-    
-    # # Decompress the compressed data
-    # buffer = BytesIO(compressed_data)
-    # with gzip.GzipFile(fileobj=buffer, mode='rb') as gz_file:
-    #     decompressed_data = gz_file.read()
-
-    # # Deserialize the decompressed bytes back to a dictionary
-    # decoded_tile_reloaded = json.loads(decompressed_data.decode('utf-8'))
-
-    # # Output for verification
-    # print(decoded_tile)
-
-
-    # encoded_tile = mapbox_vector_tile.encode(decoded_tile)
-
-    # print(encoded_tile)
-     # Update the tile in the database
-    # with BytesIO(encoded_tile) as byte_stream:
-    #     encoded_tile_compressed = gzip.compress(byte_stream.getvalue())
-
-    # print('encoded_tile_compressed:', encoded_tile_compressed)
-    # print('#################')
-
-    # with BytesIO(encoded_tile_compressed) as byte_stream:
-    #     encoded_tile_decompressed = gzip.decompress(byte_stream.getvalue())
-
-    # print('decompressed again:', encoded_tile_decompressed)
-    # print('#################')
-
-    # cursor.execute("""
-    #     UPDATE tiles
-    #     SET tile_data = ?
-    #     WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?""", (encoded_tile, 0, 0, 0))
-    
-    cursor.execute("""
-        UPDATE tiles
-        SET tile_data = ?
-        WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?""", (encoded_tile_gzib, 0, 0, 0))
-        # WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?""", (encoded_tile, 0, 0, 0))
-
-    # # Decompress the compressed data
-    # buffer = BytesIO(compressed_data)
-    # with gzip.GzipFile(fileobj=buffer, mode='rb') as gz_file:
-    #     decompressed_data = gz_file.read()
-
-    # # Deserialize the decompressed bytes back to a dictionary
-    # decoded_tile_reloaded = json.loads(decompressed_data.decode('utf-8'))
-
-    # Output for verification
-    # print(decoded_tile_reloaded)
-
-    # for layer_name, layer_data in decoded_tile_reloaded.items():
-    #     print(f"Layer Name: {layer_name}")
-        
-    # encoded_tile = mapbox_vector_tile.encode(decoded_tile_reloaded)
-    # print(encoded_tile)
-        # # Update the tile in the database
-        # cursor.execute("""
-        #     UPDATE tiles
-        #     SET tile_data = ?
-        #     WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?
-        # """, (encoded_tile, 0, 0, 0))
-
-        
-            # for feature in layer_data['features']:
-            #     print(f"Feature Type: {feature['type']}")
-            #     print(f"Feature Geometry: {feature['geometry']}")
-            #     print(f"Feature Properties: {feature['properties']}")
-        # for layername, layerdata in decoded_tile.items():
-        #     print(f"Layer: {layername}")
-
-        # if layer_name in decoded_tile:
-        #     print (decoded_tile[layer_name])
-            # del decoded_tile['layers'][layer_name]
-
-            # # Encode the modified tile
-            # encoded_tile = mapbox_vector_tile.encode(decoded_tile)
-
-            # # Update the tile in the database
-            # cursor.execute("""
-            #     UPDATE tiles
-            #     SET tile_data = ?
-            #     WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?
-            # """, (encoded_tile, zoom_level, tile_column, tile_row))
-    # except Exception as e:
-    #     # print(f"Error processing tile at zoom {zoom_level}, column {tile_column}, row {tile_row}: {e}")
-    #     print('lalala')
-    # Commit the changes and close the connection
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 def main():
-    parser = argparse.ArgumentParser(description="Delete a layer from an MBTiles file.")
+    parser = argparse.ArgumentParser(description="Delete layers from an MBTiles file.")
     parser.add_argument("-i", "--input", required=True, help="Path to the input MBTiles file")
     parser.add_argument("-o", "--output", required=True, help="Path to the output MBTiles file")
-    parser.add_argument("-l", "--layer", required=True, help="Name of the layer to delete")
-
+    parser.add_argument("-l", "--layers", nargs='+', required=True, help="Names of the layers to delete")
     args = parser.parse_args()
-    delete_layer_from_mbtiles(args.input, args.output, args.layer)
-   
+    delete_layers_from_mbtiles(args.input, args.output, args.layers)
+
 if __name__ == "__main__":
     main()
