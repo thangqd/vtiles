@@ -124,7 +124,8 @@ def delete_layers_from_mbtiles(input_path, output_path, layers_to_delete):
                     print(f"Error processing tile {zoom_level}/{tile_column}/{tile_row}: {e}")
 
         conn.commit()
-
+    conn.close()
+    
 def main():
     parser = argparse.ArgumentParser(description="Delete layers from an MBTiles file.")
     parser.add_argument("-i", "--input", required=True, help="Path to the input MBTiles file")

@@ -55,7 +55,9 @@ setup(
             'mbtiles2s3 = tiles_util.mbtiles2s3:main',     
             'mbtiles2geojson = tiles_util.mbtiles2geojson:main',
             'mbtiles2pbf = tiles_util.mbtiles2pbf:main',
-            'mbtilesdellayer = tiles_util.mbtilesdellayer:main',
+            'mbtilesdel = tiles_util.mbtilesdel:main',
+            'mbtilessplit = tiles_util.mbtilessplit:main',
+            'mbtilesmerge = tiles_util.mbtilesmerge:main',
             'geojson2mbtiles = tiles_util.geojson2mbtiles:main',                   
             'folder2mbtiles = tiles_util.folder2mbtiles:main',  
              
