@@ -9,43 +9,85 @@ import mapbox_vector_tile
 
 def fix_wkt(data):
     result = []
+    
     for key in data:
         feature_collection = data[key]
         features = []
-        for feature in feature_collection['features']:
-            geom_type = feature['geometry']['type']
-            coords = feature['geometry']['coordinates']
-            if geom_type == 'Polygon':
-                wkt_geom = 'POLYGON ((' + ', '.join([' '.join(map(str, pt)) for pt in coords[0]]) + '))'
+        
+        for feature in feature_collection.get('features', []):
+            geom = feature.get('geometry', {})
+            geom_type = geom.get('type')
+            coords = geom.get('coordinates')
+            
+            if geom_type is None or coords is None or (isinstance(coords, (list, dict)) and not coords):
+                # Handle null or empty geometry
+                wkt_geom = f'{geom_type or "GEOMETRY"} EMPTY'
+                
+            elif geom_type == 'Polygon':
+                if not coords or not coords[0]:
+                    wkt_geom = 'POLYGON EMPTY'
+                else:
+                    wkt_geom = 'POLYGON ((' + ', '.join([' '.join(map(str, pt)) for pt in coords[0]]) + '))'
+                
             elif geom_type == 'LineString':
-                wkt_geom = 'LINESTRING (' + ', '.join([' '.join(map(str, pt)) for pt in coords]) + ')'
+                if not coords:
+                    wkt_geom = 'LINESTRING EMPTY'
+                else:
+                    wkt_geom = 'LINESTRING (' + ', '.join([' '.join(map(str, pt)) for pt in coords]) + ')'
+                
             elif geom_type == 'MultiPolygon':
-                polygons = []
-                for polygon in coords:
-                    polygons.append('((' + ', '.join([' '.join(map(str, pt)) for pt in polygon[0]]) + '))')
-                wkt_geom = 'MULTIPOLYGON (' + ', '.join(polygons) + ')'
+                if not coords:
+                    wkt_geom = 'MULTIPOLYGON EMPTY'
+                else:
+                    polygons = []
+                    for polygon in coords:
+                        if not polygon:
+                            polygons.append('EMPTY')
+                        else:
+                            polygons.append('((' + ', '.join([' '.join(map(str, pt)) for pt in polygon[0]]) + '))')
+                    wkt_geom = 'MULTIPOLYGON (' + ', '.join(polygons) + ')'
+                
             elif geom_type == 'MultiLineString':
-                lines = []
-                for line in coords:
-                    lines.append('(' + ', '.join([' '.join(map(str, pt)) for pt in line]) + ')')
-                wkt_geom = 'MULTILINESTRING (' + ', '.join(lines) + ')'
+                if not coords:
+                    wkt_geom = 'MULTILINESTRING EMPTY'
+                else:
+                    lines = []
+                    for line in coords:
+                        if not line:
+                            lines.append('EMPTY')
+                        else:
+                            lines.append('(' + ', '.join([' '.join(map(str, pt)) for pt in line]) + ')')
+                    wkt_geom = 'MULTILINESTRING (' + ', '.join(lines) + ')'
+                
             elif geom_type == 'Point':
-                wkt_geom = 'POINT (' + ' '.join(map(str, coords)) + ')'
+                if not coords:
+                    wkt_geom = 'POINT EMPTY'
+                else:
+                    wkt_geom = 'POINT (' + ' '.join(map(str, coords)) + ')'
+                
             elif geom_type == 'MultiPoint':
-                points = []
-                for point in coords:
-                    points.append(' '.join(map(str, point)))
-                wkt_geom = 'MULTIPOINT (' + ', '.join(points) + ')'
+                if not coords:
+                    wkt_geom = 'MULTIPOINT EMPTY'
+                else:
+                    points = []
+                    for point in coords:
+                        points.append(' '.join(map(str, point)))
+                    wkt_geom = 'MULTIPOINT (' + ', '.join(points) + ')'
+                
             else:
-                continue  # Skip other geometry types
+                # Skip unsupported geometry types
+                continue
+            
             features.append({
                 'geometry': wkt_geom,
-                'properties': feature['properties']
+                'properties': feature.get('properties', {})
             })
+        
         result.append({
             'name': key,
             'features': features
         })
+    
     return result
 
 def filter_metadata(metadata_json, layers_to_keep):
