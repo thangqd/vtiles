@@ -5,7 +5,8 @@ import json
 import argparse
 import os
 from tqdm import tqdm
-import mapbox_vector_tile
+from .mapbox_vector_tile import encode, decode
+
 
 def fix_wkt(data):
     result = []
@@ -160,7 +161,7 @@ def split_mbtiles_by_layers(input_path, output_path, layers_to_keep):
                     tile_data = gzip.decompress(tile_data)
 
                 # Decode the tile data
-                decoded_tile = mapbox_vector_tile.decode(tile_data)
+                decoded_tile = decode(tile_data)
                 decoded_tile = fix_wkt(decoded_tile)
                 
                 decoded_tile_filtered = [item for item in decoded_tile if item["name"] in layers_to_keep]
@@ -168,7 +169,7 @@ def split_mbtiles_by_layers(input_path, output_path, layers_to_keep):
                 if len(decoded_tile_filtered) < len(decoded_tile):
                 # Encode and compress the modified tile
                     try:
-                        encoded_tile = mapbox_vector_tile.encode(decoded_tile_filtered)
+                        encoded_tile = encode(decoded_tile_filtered)
                         encoded_tile_gzip = gzip.compress(encoded_tile)
                         cursor.execute("""
                             INSERT OR REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data)

@@ -1,4 +1,4 @@
-import mapbox_vector_tile
+from .mapbox_vector_tile import decode
 import sys
 import gzip
 import zlib
@@ -22,7 +22,7 @@ def read_pbf_tile(pbf_file):
             compression_type = 'None'
 
         # Decode the tile data
-        tile = mapbox_vector_tile.decode(tile_data)
+        tile = decode(tile_data)
         return tile, compression_type
 
     except Exception as e:

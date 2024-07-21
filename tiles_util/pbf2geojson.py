@@ -1,4 +1,4 @@
-import mapbox_vector_tile
+from .mapbox_vector_tile import encode, decode
 import geojson
 import argparse
 from collections import defaultdict
@@ -27,7 +27,7 @@ def read_pbf_tile(pbf_file):
         tile_data = f.read()
 
     # Parse the .pbf tile data
-    tile = mapbox_vector_tile.decode(tile_data)
+    tile = decode(tile_data)
 
     return tile
 

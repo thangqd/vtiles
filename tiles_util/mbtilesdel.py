@@ -1,5 +1,5 @@
 import sqlite3
-import mapbox_vector_tile
+from .mapbox_vector_tile import encode, decode
 import argparse
 import shutil
 import gzip
@@ -144,7 +144,7 @@ def delete_layers_from_mbtiles(input_path, output_path, layers_to_delete):
                 tile_data = gzip.decompress(tile_data)
 
             # Decode the tile data
-            decoded_tile = mapbox_vector_tile.decode(tile_data)
+            decoded_tile = decode(tile_data)
             decoded_tile = fix_wkt(decoded_tile)
 
             # Remove the specified layers
@@ -153,7 +153,7 @@ def delete_layers_from_mbtiles(input_path, output_path, layers_to_delete):
             if len(decoded_tile_filtered) < len(decoded_tile):
                 # Encode and compress the modified tile
                 try:
-                    encoded_tile = mapbox_vector_tile.encode(decoded_tile_filtered)
+                    encoded_tile = encode(decoded_tile_filtered)
                     encoded_tile_gzip = gzip.compress(encoded_tile)
 
                     # Update the tile data in the database

@@ -1,7 +1,7 @@
 import sqlite3
 import os
 import shutil
-import mapbox_vector_tile
+from .mapbox_vector_tile import encode, decode
 import argparse
 import gzip
 import json
@@ -124,16 +124,16 @@ def merge_tiles(tile1, tile2, z=None, x=None, y=None):
         if tile1 and tile2:
             if tile1[:2] == b'\x1f\x8b':
                 tile1 = gzip.decompress(tile1)
-            decoded_tile1 = mapbox_vector_tile.decode(tile1)
+            decoded_tile1 = decode(tile1)
             decoded_tile1_fixed = fix_wkt(decoded_tile1)
 
             if tile2[:2] == b'\x1f\x8b':
                 tile2 = gzip.decompress(tile2)
-            decoded_tile2 = mapbox_vector_tile.decode(tile2)
+            decoded_tile2 = decode(tile2)
             decoded_tile2_fixed = fix_wkt(decoded_tile2)
 
             merged_tiles = merge_json_data (decoded_tile1_fixed,decoded_tile2_fixed)
-            merged_tiles_encoded = mapbox_vector_tile.encode(merged_tiles)
+            merged_tiles_encoded = encode(merged_tiles)
             encoded_tile_encoded_gzip = gzip.compress(merged_tiles_encoded)
             
             return encoded_tile_encoded_gzip
