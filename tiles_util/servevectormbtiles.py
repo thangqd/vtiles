@@ -12,7 +12,7 @@ logger.setLevel(logging.WARNING)
 try:
     from settings import MBTILES_ABSPATH, MBTILES_TILE_EXT, MBTILES_ZOOM_OFFSET, MBTILES_HOST, MBTILES_PORT, MBTILES_SERVE, USE_OSGEO_TMS_TILE_ADDRESSING
 except ImportError:
-    logger.warn("settings.py not set, may not be able to run via a web server (apache, nginx, etc)!")
+    logger.warning("settings.py not set, may not be able to run via a web server (apache, nginx, etc)!")
     MBTILES_ABSPATH = None
     MBTILES_TILE_EXT = '.pbf'
     MBTILES_ZOOM_OFFSET = 0
@@ -69,18 +69,19 @@ class MBTilesApplication:
 
             if base_uri == 'metadata':
                 query = 'SELECT * FROM metadata;'
-                metadata_results = self.mbtiles_db.execute(query).fetchall()
-                if metadata_results:
+                try:
+                    metadata_results = self.mbtiles_db.execute(query).fetchall()
                     status = '200 OK'
                     response_headers = [('Content-type', 'application/json')]
                     start_response(status, response_headers)
                     json_result = json.dumps(metadata_results, ensure_ascii=False)
                     return [json_result.encode("utf8"), ]
-                else:
-                    status = '404 NOT FOUND'
+                except sqlite3.Error as e:
+                    logger.error(f"Database error: {e}")
+                    status = '500 Internal Server Error'
                     response_headers = [('Content-type', 'text/plain; charset=utf-8')]
                     start_response(status, response_headers)
-                    return ['"metadata" not found in configured .mbtiles file!'.encode('utf8'), ]
+                    return [b'Internal Server Error'].encode('utf8')
 
             elif uri_field_count >= 3:  # Expect: zoom, x & y
                 try:
@@ -89,7 +90,7 @@ class MBTilesApplication:
                         status = "404 Not Found"
                         response_headers = [('Content-type', 'text/plain; charset=utf-8')]
                         start_response(status, response_headers)
-                        return [f'Requested zoomlevel({zoom}) Not Available! Valid range minzoom({self.minzoom}) maxzoom({self.maxzoom}) PATH_INFO: {environ["PATH_INFO"]}'].encode('utf8')
+                        return [f'Requested zoomlevel({zoom}) Not Available! Valid range minzoom({self.minzoom}) maxzoom({self.maxzoom}) PATH_INFO: {environ["PATH_INFO"]}'.encode('utf8')]
 
                     zoom += self.zoom_offset
                     x = int(shift_path_info(environ))
@@ -102,41 +103,42 @@ class MBTilesApplication:
                     return [f'Unable to parse PATH_INFO({environ["PATH_INFO"]}), expecting "z/x/y.pbf"'.encode('utf8'), ' '.join(i for i in e.args).encode('utf8')]
 
                 query = 'SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?;'
-                # if not USE_OSGEO_TMS_TILE_ADDRESSING:
-                #     # Adjust y to use XYZ google addressing
-                #     ymax = 1 << zoom
-                #     y = ymax - y - 1
                 ymax = 1 << zoom
                 y = ymax - y - 1
                 values = (zoom, x, y)
-                tile_results = self.mbtiles_db.execute(query, values).fetchone()
-
-                if tile_results:
-                    tile_data = tile_results[0]
-                    # compressed_tile = zlib.compress(tile_data)
-                    status = '200 OK'
-                    response_headers = [('Content-type', self.tile_content_type),
-                                        ('Content-Encoding', self.tile_content_encoding)]
-                    start_response(status, response_headers)
-                    return [tile_data]
-                else:
-                    status = '404 NOT FOUND'
+                try:
+                    tile_results = self.mbtiles_db.execute(query, values).fetchone()
+                    if tile_results:
+                        tile_data = tile_results[0]
+                        status = '200 OK'
+                        response_headers = [('Content-type', self.tile_content_type),
+                                            ('Content-Encoding', self.tile_content_encoding)]
+                        start_response(status, response_headers)
+                        return [tile_data]
+                    else:
+                        status = '404 NOT FOUND'
+                        response_headers = [('Content-type', 'text/plain; charset=utf-8')]
+                        start_response(status, response_headers)
+                        return [f'No data found for request location: {environ["PATH_INFO"]}'.encode('utf8')]
+                except sqlite3.Error as e:
+                    logger.error(f"Database error: {e}")
+                    status = '500 Internal Server Error'
                     response_headers = [('Content-type', 'text/plain; charset=utf-8')]
                     start_response(status, response_headers)
-                    return [f'No data found for request location: {environ["PATH_INFO"]}'].encode('utf8')
+                    return [b'Internal Server Error'].encode('utf8')
 
         status = "400 Bad Request"
         response_headers = [('Content-type', 'text/plain; charset=utf-8')]
         start_response(status, response_headers)
         return [b'request URI not in expected: ("metadata", "/z/x/y.pbf")']
 
-if __name__ == '__main__':
+def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--serve",
                         default=MBTILES_SERVE,
                         action='store_true',
-                        help="Start test server[DEFAULT={}]\n(Defaults to environment variable, 'MBTILES_SERVE')".format(MBTILES_SERVE))
+                        help="Start test server [DEFAULT={}]\n(Defaults to environment variable, 'MBTILES_SERVE')".format(MBTILES_SERVE))
     parser.add_argument('-p', '--port',
                         default=MBTILES_PORT,
                         type=int,
@@ -185,6 +187,8 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             logger.info("Stopping server...")
             httpd.server_close()
-
     else:
         logger.info("Webserver NOT started.")
+
+if __name__ == '__main__':
+    main()

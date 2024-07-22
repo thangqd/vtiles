@@ -1,6 +1,3 @@
-# https://github.com/monkut/servembtiles
-# https://github.com/uktrade/mbtiles-s3-server
-
 #!/usr/bin/env python3
 """
 mbtiles WSGI application
@@ -15,6 +12,8 @@ import sqlite3
 import mimetypes
 import logging
 from wsgiref.util import shift_path_info
+from wsgiref.simple_server import make_server, WSGIServer
+from socketserver import ThreadingMixIn
 
 
 logger = logging.getLogger(__name__)
@@ -23,7 +22,7 @@ logger.setLevel(logging.WARNING)
 try:
     from settings import MBTILES_ABSPATH, MBTILES_TILE_EXT, MBTILES_ZOOM_OFFSET, MBTILES_HOST, MBTILES_PORT, MBTILES_SERVE, USE_OSGEO_TMS_TILE_ADDRESSING
 except ImportError:
-    logger.warn("settings.py not set, may not be able to run via a web server (apache, nginx, etc)!")
+    logger.warning("settings.py not set, may not be able to run via a web server (apache, nginx, etc)!")
     MBTILES_ABSPATH = None
     MBTILES_TILE_EXT = '.png'
     MBTILES_ZOOM_OFFSET = 0
@@ -149,32 +148,33 @@ class MBTilesApplication:
         return ['request URI not in expected: ("metadata", "/z/x/y.png")'.encode('utf8'), ]
 
 
-if __name__ == '__main__':
+def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--serve",
                         default=MBTILES_SERVE,
                         action='store_true',
-                        help="Start test server[DEFAULT={}]\n(Defaults to enviornment variable, 'MBTILES_SERVE')".format(MBTILES_SERVE))
+                        help="Start test server [DEFAULT={}]\n(Defaults to environment variable, 'MBTILES_SERVE')".format(MBTILES_SERVE))
     parser.add_argument('-p', '--port',
                         default=MBTILES_PORT,
                         type=int,
-                        help="Test server port [DEFAULT={}]\n(Defaults to enviornment variable, 'MBTILES_PORT')".format(MBTILES_PORT))
+                        help="Test server port [DEFAULT={}]\n(Defaults to environment variable, 'MBTILES_PORT')".format(MBTILES_PORT))
     parser.add_argument('-a', '--address',
                         default=MBTILES_HOST,
-                        help="Test address to serve on [DEFAULT=\"{}\"]\n(Defaults to enviornment variable, 'MBTILES_HOST')".format(MBTILES_HOST))
+                        help="Test address to serve on [DEFAULT=\"{}\"]\n(Defaults to environment variable, 'MBTILES_HOST')".format(MBTILES_HOST))
     parser.add_argument('-f', '--filepath',
                         default=MBTILES_ABSPATH,
-                        help="mbtiles filepath [DEFAULT={}]\n(Defaults to enviornment variable, 'MBTILES_ABSFILEPATH')".format(MBTILES_ABSPATH))
+                        help="mbtiles filepath [DEFAULT={}]\n(Defaults to environment variable, 'MBTILES_ABSPATH')".format(MBTILES_ABSPATH))
     parser.add_argument('-e', '--ext',
                         default=MBTILES_TILE_EXT,
-                        help="mbtiles image file extention [DEFAULT={}]\n(Defaults to enviornment variable, 'MBTILES_TILE_EXT')".format(MBTILES_TILE_EXT))
+                        help="mbtiles image file extension [DEFAULT={}]\n(Defaults to environment variable, 'MBTILES_TILE_EXT')".format(MBTILES_TILE_EXT))
     parser.add_argument('-z', '--zoom-offset',
                         default=MBTILES_ZOOM_OFFSET,
                         type=int,
-                        help="mbtiles zoom offset [DEFAULT={}]\n(Defaults to enviornment variable, 'MBTILES_ZOOM_OFFSET')".format(MBTILES_ZOOM_OFFSET))
+                        help="mbtiles zoom offset [DEFAULT={}]\n(Defaults to environment variable, 'MBTILES_ZOOM_OFFSET')".format(MBTILES_ZOOM_OFFSET))
     args = parser.parse_args()
     args.filepath = os.path.abspath(args.filepath)
+
     if args.serve:
         # create console handler and set level to debug
         console = logging.StreamHandler()
@@ -189,8 +189,6 @@ if __name__ == '__main__':
         logger.info("ADDRESS : {}".format(args.address))
         logger.info("PORT    : {}".format(args.port))
 
-        from wsgiref.simple_server import make_server, WSGIServer
-        from socketserver import ThreadingMixIn
         class ThreadingWSGIServer(ThreadingMixIn, WSGIServer): pass
 
         mbtiles_app = MBTilesApplication(mbtiles_filepath=args.filepath, tile_image_ext=args.ext, zoom_offset=args.zoom_offset)
@@ -200,7 +198,9 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             logger.info("stopped.")
     else:
-        logger.warn("'--serve' option not given!")
-        logger.warn("\tRun with the '--serve' option to serve tiles with the test server.")
-else:
-    application = MBTilesApplication(mbtiles_filepath=MBTILES_ABSPATH, tile_image_ext=MBTILES_TILE_EXT, zoom_offset=MBTILES_ZOOM_OFFSET)
+        logger.warning("'--serve' option not given!")
+        logger.warning("\tRun with the '--serve' option to serve tiles with the test server.")
+
+
+if __name__ == '__main__':
+    main()

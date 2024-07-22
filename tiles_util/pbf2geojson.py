@@ -1,4 +1,4 @@
-from .mapbox_vector_tile import encode, decode
+from mapbox_vector_tile import encode, decode
 import geojson
 import argparse
 from collections import defaultdict
