@@ -43,7 +43,7 @@ setup(
             'mbtilesmerge = tiles_util.mbtiles.mbtilesmerge:main',
             'geojson2mbtiles = tiles_util.mbtiles.geojson2mbtiles:main',                   
             'folder2mbtiles = tiles_util.mbtiles.folder2mbtiles:main',  
-            'pbfinfo = tiles_util.pbfinfo:main',
+            'pbfinfo = tiles_util.mbtiles.pbfinfo:main',
             'pbf2geojson = tiles_util.mbtiles.pbf2geojson:main',
             'folder2s3 = tiles_util.mbtiles.folder2s3:main',
             'flipy = tiles_util.mbtiles.flipy:main',

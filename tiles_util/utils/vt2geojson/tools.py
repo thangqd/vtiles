@@ -1,6 +1,6 @@
 from urllib.parse import urlparse
 
-from ..mapbox_vector_tile import decode
+from tiles_util.utils.mapbox_vector_tile import decode
 
 from .features import Layer
 

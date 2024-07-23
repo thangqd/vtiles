@@ -90,7 +90,7 @@ def main():
     parser = argparse.ArgumentParser(description='Convert MBTiles file to folder')
     parser.add_argument('-i', required=True, help='Input MBTiles file name')
     parser.add_argument('-o', help='Output folder name (optional)')
-    parser.add_argument('-tms', help='Use TMS (flip y) format: 1 or 0', type=int, default=0)
+    parser.add_argument('-flipy', help='Use TMS (flip y) format: 1 or 0', type=int, default=0)
     parser.add_argument('-minzoom', help='Minimum zoom level to export', type=int, default=0)
     parser.add_argument('-maxzoom', help='Maximum zoom level to export', type=int, default=None)
 
@@ -104,7 +104,7 @@ def main():
     output_folder_abspath = os.path.abspath(args.o) if args.o else os.path.join(os.path.dirname(args.i), os.path.splitext(os.path.basename(args.i))[0])
     
     print(f'Converting {input_filename_abspath} to {output_folder_abspath} folder.')
-    convert_mbtiles_to_folder(args.i, output_folder_abspath, args.tms, args.minzoom, args.maxzoom)
+    convert_mbtiles_to_folder(args.i, output_folder_abspath, args.flipy, args.minzoom, args.maxzoom)
 
 if __name__ == "__main__":
     main()

@@ -158,7 +158,7 @@ def main():
   parser = argparse.ArgumentParser(description='Convert Tiles folder to MBTiles')
   parser.add_argument('-i', help='Input folder')
   parser.add_argument('-o', help='Output mbtiles file name (optional)', default=None)
-  parser.add_argument('-tms', help='Use TMS (flip y) format: 1 or 0', type=int, default=0)
+  parser.add_argument('-flipy', help='Use TMS (flip y) format: 1 or 0', type=int, default=0)
 
   args = parser.parse_args()
 
@@ -189,7 +189,7 @@ def main():
       print(f'Output MBTiles file {output_file_abspath} is not valid or already existed!. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
       exit()
   
-  folder2mbtiles(input_folder_abspath, output_file_abspath, args.tms)
+  folder2mbtiles(input_folder_abspath, output_file_abspath, args.flipy)
 
 if __name__ == "__main__":
   main()
