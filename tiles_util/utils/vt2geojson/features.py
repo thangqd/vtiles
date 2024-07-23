@@ -77,6 +77,7 @@ class Layer:
 
     def toGeoJSON(self):
         return {
+            "name": self.name,
             "type": "FeatureCollection",
             "features": [Feature(x=self.x, y=self.y, z=self.z, obj=f, extent=self.extent).toGeoJSON()
                          for f in self.obj['features']]

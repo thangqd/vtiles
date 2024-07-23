@@ -25,9 +25,12 @@ def vt_bytes_to_geojson(b_content: bytes, x: int, y: int, z: int, layer=None) ->
     :return: a features collection (GeoJSON).
     """
     data = decode(b_content, y_coord_down=True)
-    features_collections = [Layer(x=x, y=y, z=z, name=name, obj=layer_obj).toGeoJSON()
-                            for name, layer_obj in data.items() if layer is None or name == layer]
-    return {
-        "type": "FeatureCollection",
-        "features": [f for fc in features_collections for f in fc["features"]]
-    }
+
+    features_collections = [Layer(x=x, y=y, z=z, name=layer_name, obj=layer_obj).toGeoJSON()
+                            for layer_name, layer_obj in data.items() if layer is None or layer_name == layer]
+
+    geojson = {fc["name"]: {"type": fc["type"], "features": fc["features"]} for fc in features_collections}
+
+     
+    return geojson
+    
