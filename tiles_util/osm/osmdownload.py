@@ -5,7 +5,7 @@ import tempfile
 from urllib.error import HTTPError
 from urllib.request import *
 
-from .osm_geofabrik.geofabrik_sources import (
+from .geofabrik_sources import (
         Africa,
         Antarctica,
         Asia,

@@ -1,6 +1,6 @@
 import requests
 import json
-from .vt2geojson.tools import vt_bytes_to_geojson
+from tiles_util.utils.vt2geojson.tools import vt_bytes_to_geojson
 
 MAPBOX_ACCESS_TOKEN = "your_mapbox_access_token_here"
 

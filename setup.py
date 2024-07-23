@@ -4,24 +4,13 @@
 from setuptools import setup, find_packages
 
 requirements = [
-    # "osmium~=3.6.0",
-    # 'mapbox_vector_tile~=2.0.1',
-    "tqdm~=4.66.2",
-    "boto3~=1.34.72",
-    "requests~=2.31.0",
-    'asyncpg~=0.29.0',
-    'tornado~=6.3.3',
-    'betterproto~=1.2.5',
-    'docopt-ng~=0.7.2',
-    'deprecated~=1.2.13',
-    'ascii_graph~=1.5.1',
-    'dataclasses-json~=0.5.6',
+    'tqdm~=4.66.2',
+    'boto3~=1.34.72',
+    'requests~=2.31.0',
     'click~=8.1.7',
     'fiona~=1.9.4',
-    'networkx~=2.8.8',
-    'scipy~=1.11.3',
     'shapely~=2.0.1',
-    'osmium~=3.7.0'    
+    'osmium~=3.7.0'
 ]
 
 setup(
@@ -37,43 +26,39 @@ setup(
     packages=find_packages(),
     entry_points={
         'console_scripts': [
-            'osmdownload = tiles_util.osmdownload:main',
-            'osmreplication = tiles_util.osmreplication:main',
-            'osminfo = tiles_util.osminfo:main',
-            'osm2geojson = tiles_util.osm2geojson:main',
-           
-            'osmpub = tiles_util.osmpub:main',
+            'osmdownload = tiles_util.osm.osmdownload:main',
+            'osmreplication = tiles_util.osm.osmreplication:main',
+            'osminfo = tiles_util.osm.osminfo:main',
+            'osm2geojson = tiles_util.osm.osm2geojson:main',
+            'osmpub = tiles_util.osm.osmpub:main',
+            
+            'mbtilesinfo = tiles_util.mbtiles.mbtilesinfo:main',
+            'mbtiles2folder = tiles_util.mbtiles.mbtiles2folder:main',
+            'mbtiles2pmtiles = tiles_util.mbtiles.mbtiles2pmtiles:main',
+            'mbtiles2s3 = tiles_util.mbtiles.mbtiles2s3:main',     
+            'mbtiles2geojson = tiles_util.mbtiles.mbtiles2geojson:main',
+            'mbtiles2pbf = tiles_util.mbtiles.mbtiles2pbf:main',
+            'mbtilesdel = tiles_util.mbtiles.mbtilesdel:main',
+            'mbtilessplit = tiles_util.mbtiles.mbtilessplit:main',
+            'mbtilesmerge = tiles_util.mbtiles.mbtilesmerge:main',
+            'geojson2mbtiles = tiles_util.mbtiles.geojson2mbtiles:main',                   
+            'folder2mbtiles = tiles_util.mbtiles.folder2mbtiles:main',  
             'pbfinfo = tiles_util.pbfinfo:main',
-            'pbf2geojson = tiles_util.pbf2geojson:main',
-            'pbfview = tiles_util.pbfview:main',
-
-
-            'mbtilesinfo = tiles_util.mbtilesinfo:main',
-            'mbtiles2folder = tiles_util.mbtiles2folder:main',
-            'mbtiles2pmtiles = tiles_util.mbtiles2pmtiles:main',
-            'mbtiles2s3 = tiles_util.mbtiles2s3:main',     
-            'mbtiles2geojson = tiles_util.mbtiles2geojson:main',
-            'mbtiles2pbf = tiles_util.mbtiles2pbf:main',
-            'mbtilesdel = tiles_util.mbtilesdel:main',
-            'mbtilessplit = tiles_util.mbtilessplit:main',
-            'mbtilesmerge = tiles_util.mbtilesmerge:main',
-            'geojson2mbtiles = tiles_util.geojson2mbtiles:main',                   
-            'folder2mbtiles = tiles_util.folder2mbtiles:main',  
-             
-            'folder2s3 = tiles_util.folder2s3:main',
+            'pbf2geojson = tiles_util.mbtiles.pbf2geojson:main',
+            'folder2s3 = tiles_util.mbtiles.folder2s3:main',
+            'flipy = tiles_util.mbtiles.flipy:main',
+            'debuggrid = tiles_util.mbtiles.debuggrid:main',
+                                  
+            'servefolder= tiles_util.server.servefolder:main',
+            'servepostgis= tiles_util.server.servepostgis:main',          
+            'servembtiles=tiles_util.server.servembtiles:main',    
+            'servevectormbtiles=tiles_util.server.servevectormbtiles:main',       
+            'servepmtiles=tiles_util.server.servepmtiles:main',                   
             
-            'pmtilesinfo = tiles_util.pmtilesinfo:main',
-            'pmtiles2folder = tiles_util.pmtiles2folder:main',
-            'pmtiles2mbtiles = tiles_util.pmtiles2mbtiles:main',
-                        
-            'servefolder= tiles_util.servefolder:main',
-            'servepostgis= tiles_util.servepostgis:main',          
-            'servembtiles=tiles_util.servembtiles:main',    
-            'servevectormbtiles=tiles_util.servevectormbtiles:main',       
-            'servepmtiles=tiles_util.servepmtiles:main',                   
-            
-            'flipy = tiles_util.flipy:main',
-            'centerline=tiles_util.centerline:main'
+            'pmtilesinfo = tiles_util.utils.pmtilesinfo:main',
+            'pmtiles2folder = tiles_util.utils.pmtiles2folder:main',
+            'pmtiles2mbtiles = tiles_util.utils.pmtiles2mbtiles:main',           
+            'centerline=tiles_util.utils.centerline:main'
         ],
     },    
 

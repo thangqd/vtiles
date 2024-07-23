@@ -3,7 +3,7 @@ from shapely.geometry import Polygon, shape, mapping
 from shapely.affinity import affine_transform
 import sqlite3
 import argparse
-from .mapbox_vector_tile import encode
+from tiles_util.utils.mapbox_vector_tile import encode
 import gzip
 
 def tile_to_polygon(tile):

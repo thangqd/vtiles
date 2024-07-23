@@ -1,4 +1,4 @@
-from .mapbox_vector_tile import decode
+from tiles_util.utils.mapbox_vector_tile import decode
 import sys
 import gzip
 import zlib

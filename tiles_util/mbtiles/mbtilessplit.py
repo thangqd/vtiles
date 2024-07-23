@@ -5,7 +5,7 @@ import json
 import argparse
 import os
 from tqdm import tqdm
-from .mapbox_vector_tile import encode, decode
+from tiles_util.utils.mapbox_vector_tile import encode, decode
 
 
 def fix_wkt(data):

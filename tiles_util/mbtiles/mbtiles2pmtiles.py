@@ -1,7 +1,7 @@
 import argparse
 import gzip
-from .pmtiles.writer import write
-from .pmtiles.tile import TileType, zxy_to_tileid, tileid_to_zxy, Compression
+from tiles_util.utils.pmtiles.writer import write
+from tiles_util.utils.pmtiles.tile import TileType, zxy_to_tileid, tileid_to_zxy, Compression
 import sqlite3
 from tqdm import tqdm
 

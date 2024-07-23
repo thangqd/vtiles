@@ -5,7 +5,7 @@ import http.server
 import json
 import re
 from socketserver import ThreadingMixIn
-from .pmtiles.reader import Reader, MmapSource
+from tiles_util.utils.pmtiles.reader import Reader, MmapSource
 import logging
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,6 @@
 import sqlite3, json
 import os, sys, datetime
 
-
 # Check if mbtiles is vector or raster
 def check_vector(input_filename):    
     try: 

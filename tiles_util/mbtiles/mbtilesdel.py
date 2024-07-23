@@ -1,5 +1,5 @@
 import sqlite3
-from .mapbox_vector_tile import encode, decode
+from tiles_util.utils.mapbox_vector_tile import encode, decode
 import argparse
 import shutil
 import gzip
