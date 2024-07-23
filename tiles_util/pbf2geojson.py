@@ -1,107 +1,36 @@
-from mapbox_vector_tile import encode, decode
-import geojson
-import argparse
-from collections import defaultdict
-import mercantile
+import requests
+import json
+from .vt2geojson.tools import vt_bytes_to_geojson
 
-def tile_to_latlon(tile, x, y, extent=4096):
-    # Convert tile coordinates to geographic coordinates (EPSG:4326)
-    bounds = mercantile.bounds(tile['x'], tile['y'], tile['z'])
-    min_lon, min_lat, max_lon, max_lat = bounds.west, bounds.south, bounds.east, bounds.north
+MAPBOX_ACCESS_TOKEN = "your_mapbox_access_token_here"
 
-    # Calculate scale factors
-    scale_x = (max_lon - min_lon) / extent
-    scale_y = (max_lat - min_lat) / extent
+x = 11833
+y = 6734
+z = 14
 
-    # Convert coordinates (invert y-axis)
-    lon = min_lon + x * scale_x
-    lat = min_lat + y * scale_y  
-    # invert y
-    # lat = max_lat - y * scale_y
+url = f"https://api.mapbox.com/v4/mapbox.mapbox-streets-v6/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoidGhhbmdxZCIsImEiOiJucHFlNFVvIn0.j5yb-N8ZR3d4SJAYZz-TZA"
+url= f"https://map-api-new.sovereignsolutions.net/sovereign/v20240410/nepal/{z}/{x}/{y}.pbf"
 
-    return lon, lat
+try:
+    r = requests.get(url)
+    r.raise_for_status()  # Will raise an HTTPError for bad responses
+    vt_content = r.content
+    # with open('./data/1.pbf', 'rb') as f:
+    #     vt_content = f.read()
 
-def read_pbf_tile(pbf_file):
-    # Read the .pbf file
-    with open(pbf_file, 'rb') as f:
-        tile_data = f.read()
+    print(vt_content)
+    features = vt_bytes_to_geojson(vt_content, x, y, z)
 
-    # Parse the .pbf tile data
-    tile = decode(tile_data)
+    # Specify the output file path
+    output_file = './data/6734.geojson'
 
-    return tile
-
-def convert_to_geojson(tile_data, z, x, y, extent=4096):
-    layer_features = defaultdict(list)
-
-    # Iterate through each layer in the tile
-    for layer_name, layer_data in tile_data.items():
-        for feature in layer_data['features']:
-            # Extract geometry and properties
-            geometry = feature['geometry']
-            properties = feature['properties']
-
-            # Convert tile coordinates to geographic coordinates
-            if geometry['type'] == 'Point':
-                coords = geometry['coordinates']
-                lon, lat = tile_to_latlon({'z': z, 'x': x, 'y': y}, coords[0], coords[1], extent)
-                geometry = geojson.Point((lon, lat))
-            elif geometry['type'] == 'LineString':
-                coords = geometry['coordinates']
-                line = [tile_to_latlon({'z': z, 'x': x, 'y': y}, coord[0], coord[1], extent) for coord in coords]
-                geometry = geojson.LineString(line)
-            elif geometry['type'] == 'Polygon':
-                coords = geometry['coordinates']
-                polygon = [[tile_to_latlon({'z': z, 'x': x, 'y': y}, coord[0], coord[1], extent) for coord in ring] for ring in coords]
-                geometry = geojson.Polygon(polygon)
-
-            # Create a GeoJSON feature
-            geojson_feature = {
-                'type': 'Feature',
-                'geometry': geometry,
-                'properties': properties
-            }
-
-            # Append the feature to the corresponding layer list
-            layer_features[layer_name].append(geojson_feature)
-
-    # Create GeoJSON FeatureCollection for each layer
-    geojson_layers = {}
-    for layer_name, features in layer_features.items():
-        feature_collection = {
-            'type': 'FeatureCollection',
-            'features': features
-        }
-        geojson_layers[layer_name] = feature_collection
-
-    return geojson_layers
-
-def main():
-    parser = argparse.ArgumentParser(description='Convert Mapbox Vector Tile (.pbf) to GeoJSON format.')
-    parser.add_argument('-i', '--input', required=True, help='Input .pbf file path')
-    parser.add_argument('-o', '--output', required=True, help='Output GeoJSON file path')
-    parser.add_argument('-z', required=True, type=int, help='Zoom level of the tile')
-    parser.add_argument('-x', required=True, type=int, help='X coordinate of the tile')
-    parser.add_argument('-y', required=True, type=int, help='Y coordinate of the tile')
-    args = parser.parse_args()
-
-    pbf_file = args.input
-    output_file = args.output
-    z = args.z
-    x = args.x
-    y = args.y
-
-    # Read and parse the .pbf tile
-    tile_data = read_pbf_tile(pbf_file)
-
-    # Convert to GeoJSON format
-    geojson_data = convert_to_geojson(tile_data, z, x, y)
-
-    # Write GeoJSON data to the output file
+    # Save the features to a GeoJSON file
     with open(output_file, 'w') as f:
-        geojson.dump(geojson_data, f, indent=2)
+        json.dump(features, f, indent=2)
 
-    print(f"Converted .pbf to GeoJSON: {output_file}")
+    print(f"GeoJSON data has been saved to {output_file}")
 
-if __name__ == "__main__":
-    main()
+except requests.exceptions.RequestException as e:
+    print(f"Request failed: {e}")
+except Exception as e:
+    print(f"An error occurred: {e}")

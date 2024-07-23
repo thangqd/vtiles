@@ -1,93 +1,108 @@
-import argparse
 import mercantile
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from shapely.geometry import box
-import geojson
+from shapely.geometry import Polygon, shape, mapping
+from shapely.affinity import affine_transform
+import sqlite3
+import argparse
+from .mapbox_vector_tile import encode
+import gzip
 
-def generate_debug_grid(bbox, zoom_levels):
-    """
-    Generate tile coordinates for a debug grid.
-    
-    :param bbox: A tuple (min_longitude, min_latitude, max_longitude, max_latitude)
-    :param zoom_levels: A list of zoom levels to generate tiles for
-    :return: A list of tile coordinates
-    """
-    tiles = []
-    min_lon, min_lat, max_lon, max_lat = bbox
-    for zoom in zoom_levels:
-        for tile in mercantile.tiles(min_lon, min_lat, max_lon, max_lat, zoom):
-            tiles.append(tile)
-    return tiles
+def tile_to_polygon(tile):
+    bbox = mercantile.bounds(tile)
+    return Polygon([
+        (bbox.west, bbox.south),
+        (bbox.west, bbox.north),
+        (bbox.east, bbox.north),
+        (bbox.east, bbox.south),
+        (bbox.west, bbox.south),
+    ])
 
-def visualize_debug_grid(tiles):
-    """
-    Visualize the debug grid using matplotlib.
-    
-    :param tiles: A list of tile coordinates
-    """
-    fig, ax = plt.subplots()
-    for tile in tiles:
-        # Calculate the bounds of the tile
-        bounds = mercantile.xy_bounds(tile)
-        rect = patches.Rectangle(
-            (bounds[0], bounds[1]), 
-            bounds[2] - bounds[0], 
-            bounds[3] - bounds[1], 
-            linewidth=1, edgecolor='r', facecolor='none'
+def transform_geometry(geometry, tile_bounds, extent=4096):
+    minx, miny, maxx, maxy = tile_bounds
+    x_factor = extent / (maxx - minx)
+    y_factor = extent / (maxy - miny)
+    transform = [x_factor, 0, 0, y_factor, -minx * x_factor, -miny * y_factor]
+    return affine_transform(geometry, transform)
+
+def generate_debug_grid_mbtiles(zoom_level, output_file):
+    conn = sqlite3.connect(output_file)
+    cursor = conn.cursor()
+
+    cursor.executescript("""
+    CREATE TABLE metadata (name TEXT, value TEXT);
+    CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);
+    CREATE UNIQUE INDEX name ON metadata (name);
+    CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row);
+    """)
+
+    metadata = [
+        ("name", "Debug Grid"),
+        ("type", "overlay"),
+        ("version", "1.0"),
+        ("description", "Debug grid for visualizing tile boundaries."),
+        ("format", "pbf"),
+        # ("bounds", "-180.0,-85.0511,180.0,85.0511"),
+        ("minzoom", '0'),
+        ("maxzoom", str(zoom_level))
+    ]
+    cursor.executemany("INSERT INTO metadata (name, value) VALUES (?, ?)", metadata)
+
+    world_bounds = (-180.0, -85.0511, 180.0, 85.0511)
+    for tile in mercantile.tiles(world_bounds[0], world_bounds[1], world_bounds[2], world_bounds[3], zoom_level):
+        polygon = tile_to_polygon(tile)
+        feature = {
+            "type": "Feature",
+            "geometry": mapping(polygon),
+            "properties": {
+                "tile_id": f"{tile.z}/{tile.x}/{tile.y}",
+                "z": tile.z,
+                "x": tile.x,
+                "y": tile.y
+            }
+        }
+        feature_collection = {
+            "type": "FeatureCollection",
+            "features": [feature]
+        }
+
+        tile_bounds = mercantile.bounds(tile)
+        mvt_features = []
+        for feature in feature_collection["features"]:
+            geometry = transform_geometry(shape(feature["geometry"]), (tile_bounds.west, tile_bounds.south, tile_bounds.east, tile_bounds.north))
+            mvt_features.append({
+                "geometry": geometry,
+                "properties": feature["properties"]
+            })
+
+        mvt_layer = {
+            "name": "debug_grid",
+            "features": mvt_features
+        }
+
+        # print(mvt_layer)
+        aaa = [{"name": "water", "features": [{"geometry": "POLYGON((3257.6188764017343 1924.195788997867, 3257.4962116230354 1924.0964889389206, 3257.7263541125944 1924.032235959602, 3257.8957483307977 1924.2682196290993, 3257.65509171735 1924.2623784491611, 3257.65509171735 1924.2623784491611, 3257.6188764017343 1924.195788997867))", "properties": {"name": "1"}}]}]
+        tile_data_encoded = encode(aaa)
+        print(tile_data_encoded)
+        tile_data_encoded_gzipped = gzip.compress(tile_data_encoded)
+        tile_column = tile.x
+        tile_row = tile.y
+        # tile_row = (1 << zoom_level) - 1 - tile.y
+
+        cursor.execute(
+            "INSERT INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)",
+            (zoom_level, tile_column, tile_row, tile_data_encoded_gzipped)
         )
-        ax.add_patch(rect)
-    
-    ax.set_xlabel('Longitude')
-    ax.set_ylabel('Latitude')
-    ax.set_title('Debug Grid')
-    plt.grid(True)
-    plt.show()
 
-def tiles_to_geojson(tiles):
-    """
-    Convert tile coordinates to GeoJSON format.
-    
-    :param tiles: A list of tile coordinates
-    :return: A GeoJSON FeatureCollection
-    """
-    features = []
-    for tile in tiles:
-        bounds = mercantile.xy_bounds(tile)
-        geom = box(bounds[0], bounds[1], bounds[2], bounds[3])
-        features.append(geojson.Feature(geometry=geom, properties={}))
-    
-    return geojson.FeatureCollection(features)
-
-def save_geojson(geojson_data, filename):
-    """
-    Save GeoJSON data to a file.
-    
-    :param geojson_data: GeoJSON data to be saved
-    :param filename: Name of the file to save the GeoJSON data
-    """
-    with open(filename, 'w') as f:
-        geojson.dump(geojson_data, f)
+    conn.commit()
+    conn.close()
 
 def main():
-    # Set up command-line argument parsing
-    parser = argparse.ArgumentParser(description='Generate a debug grid for vector tiles.')
-    parser.add_argument('-o', '--output', type=str, required=True, help='Output GeoJSON file')
+    parser = argparse.ArgumentParser(description="Generate a debug grid MBTiles file.")
+    parser.add_argument("-z", "--zoom", type=int, required=True, help="Zoom level for the debug grid.")
+    parser.add_argument("-o", "--output", type=str, required=True, help="Output MBTiles file.")
+
     args = parser.parse_args()
 
-    # Define the bounding box and zoom levels
-    bbox = (-180, -85.0511, 180, 85.0511)  # World bounds
-    zoom_levels = [0, 1, 2, 3]  # Example zoom levels
+    generate_debug_grid_mbtiles(args.zoom, args.output)
 
-    # Generate the debug grid
-    tiles = generate_debug_grid(bbox, zoom_levels)
-    
-    # Visualize the debug grid
-    visualize_debug_grid(tiles)
-    
-    # Convert to GeoJSON and save to file
-    feature_collection = tiles_to_geojson(tiles)
-    save_geojson(feature_collection, args.output)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

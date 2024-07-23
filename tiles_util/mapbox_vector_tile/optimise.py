@@ -1,7 +1,7 @@
 from collections import namedtuple
 
-from mapbox_vector_tile.Mapbox import vector_tile_pb2 as vector_tile
-from mapbox_vector_tile.utils import CMD_LINE_TO, CMD_MOVE_TO, LINESTRING, zig_zag_decode, zig_zag_encode
+from .Mapbox import vector_tile_pb2 as vector_tile
+from .utils import CMD_LINE_TO, CMD_MOVE_TO, LINESTRING, zig_zag_decode, zig_zag_encode
 
 
 class StringTableOptimiser:

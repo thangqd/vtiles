@@ -1,6 +1,6 @@
 import warnings
 
-from mapbox_vector_tile import decoder, encoder
+from . import decoder, encoder
 
 
 def decode(tile, per_layer_options=None, default_options=None, **kwargs):

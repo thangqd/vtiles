@@ -21,8 +21,7 @@ requirements = [
     'networkx~=2.8.8',
     'scipy~=1.11.3',
     'shapely~=2.0.1',
-    'osmium~=3.7.0',
-    'mapbox-vector-tile[proj]~=2.1.0'
+    'osmium~=3.7.0'    
 ]
 
 setup(

@@ -5,7 +5,7 @@ import argparse
 import mercantile
 from shapely.geometry import shape, box
 from shapely.geometry.geo import mapping
-from mapbox_vector_tile import encode
+from .mapbox_vector_tile import encode
 from shapely.wkt import loads as wkt_loads, dumps as wkt_dumps
 import gzip
 

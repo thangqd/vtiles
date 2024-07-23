@@ -8,10 +8,10 @@ from shapely.ops import transform
 from shapely.wkb import loads as load_wkb
 from shapely.wkt import loads as load_wkt
 
-from mapbox_vector_tile.geom_encoder import GeometryEncoder
-from mapbox_vector_tile.Mapbox import vector_tile_pb2 as vector_tile
-from mapbox_vector_tile.polygon import make_it_valid
-from mapbox_vector_tile.utils import get_encode_options
+from .geom_encoder import GeometryEncoder
+from .Mapbox import vector_tile_pb2 as vector_tile
+from .polygon import make_it_valid
+from .utils import get_encode_options
 
 
 def on_invalid_geometry_raise(shape):

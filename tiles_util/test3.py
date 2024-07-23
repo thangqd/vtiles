@@ -1,6 +1,6 @@
 import json
 import mercantile
-from mapbox_vector_tile import encode
+from .mapbox_vector_tile import encode
 import sqlite3
 import argparse
 from shapely.wkt import loads as wkt_loads, dumps as wkt_dumps

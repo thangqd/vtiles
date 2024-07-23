@@ -1,5 +1,5 @@
-from mapbox_vector_tile.Mapbox import vector_tile_pb2 as vector_tile
-from mapbox_vector_tile.utils import (
+from .Mapbox import vector_tile_pb2 as vector_tile
+from .utils import (
     CMD_BITS,
     CMD_LINE_TO,
     CMD_MOVE_TO,

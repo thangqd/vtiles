@@ -1,6 +1,6 @@
 import itertools as it
 
-from mapbox_vector_tile.utils import CMD_BITS, CMD_FAKE, CMD_LINE_TO, CMD_MOVE_TO, CMD_SEG_END, zig_zag_encode
+from .utils import CMD_BITS, CMD_FAKE, CMD_LINE_TO, CMD_MOVE_TO, CMD_SEG_END, zig_zag_encode
 
 
 class GeometryEncoder:

@@ -1,7 +1,7 @@
 import sqlite3
 import os
 import shutil
-from mapbox_vector_tile import encode, decode
+from .mapbox_vector_tile import encode, decode
 import argparse
 import gzip
 import json

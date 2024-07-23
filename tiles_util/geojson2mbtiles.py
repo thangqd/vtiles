@@ -1,6 +1,6 @@
 import json
 import argparse
-from mapbox_vector_tile import encode
+from .mapbox_vector_tile import encode
 import mercantile
 import sqlite3
 from shapely.geometry import shape, mapping
