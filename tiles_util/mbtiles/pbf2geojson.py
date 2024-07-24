@@ -3,62 +3,79 @@ import json
 import argparse
 import sqlite3
 import os
-from tiles_util.utils.vt2geojson.tools import vt_bytes_to_geojson
+from tiles_util.utils.vt2geojson.tools import vt_bytes_to_geojson, _is_url
 import gzip, zlib
 import logging
+from re import search
+from urllib.request import urlopen
 
-def fetch_vector_tile(url_or_path, x, y, z):
-    """
-    Fetch a vector tile from a URL, MBTiles file, or local file path.
+def tile_data_to_geojson(tile_data, x, y, z, output):
+    try:
+        features = vt_bytes_to_geojson(tile_data, x, y, z)
+        with open(output, 'w') as f:
+            json.dump(features, f, indent=2)
+        print(f"GeoJSON data has been saved to {output}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
-    Parameters:
-    url_or_path (str): The URL, path to an MBTiles file, or local file path.
-    x (int): The X coordinate of the tile.
-    y (int): The Y coordinate of the tile.
-    z (int): The zoom level of the tile.
 
-    Returns:
-    bytes: The raw (or decompressed) tile data if successful, otherwise None.
-    """
-    tile_data = None
-    
-    if url_or_path.startswith('http'):
-        try:
-            r = requests.get(url_or_path)
-            r.raise_for_status()  # Will raise an HTTPError for bad responses
-            tile_data = r.content
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Request to {url_or_path} failed: {e}")
-            return None
-    elif url_or_path.endswith('.mbtiles'):
-        try:
-            conn = sqlite3.connect(url_or_path)
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT tile_data 
-                FROM tiles 
-                WHERE zoom_level=? 
-                AND tile_column=? 
-                AND tile_row=?''', 
-                (z, x, (1 << z) - 1 - y))
-            row = cursor.fetchone()
-            conn.close()
-            if row:
-                tile_data = row[0]
-            else:
-                logging.error(f"Tile not found in MBTiles file at zoom_level={z}, tile_column={x}, tile_row={(1 << z) - 1 - y}")
-                return None
-        except sqlite3.Error as e:
-            logging.error(f"Failed to read MBTiles file {url_or_path}: {e}")
-            return None
+def main():
+    parser = argparse.ArgumentParser(description='Convert Tile data from BBF file, MBTiles file, or URL to GeoJSON.')
+    parser.add_argument('-i', '--input', type=str, required=True, help='Input PBF file, MBTiles file, or URL')
+    parser.add_argument('-z', type=int, help='Tile zoom level')
+    parser.add_argument('-x', type=int, help='Tile x coordinate')
+    parser.add_argument('-y', type=int, help='Tile y coordinate')
+    # parser.add_argument("-l", "--layer", help="include only the specified layer", type=str)
+    parser.add_argument('-o', '--output', type=str, required=True, help='Output GeoJSON file')
+
+    args = parser.parse_args()    
+    tile_data,z,x,y = None,None,None,None
+    url_or_path = args.input
+    XYZ_REGEX = r"\/(\d+)\/(\d+)\/(\d+)"
+
+    if _is_url(url_or_path):
+        matches = search(XYZ_REGEX, args.input)
+        if matches is None:
+            raise ValueError("Unknown url, no `/z/x/y` pattern.")
+        z, x, y = map(int, matches.groups()) # set z, x, y based on /z/x/y values in the URL
+        r = urlopen(url_or_path)
+        tile_data = r.read()
     else:
-        try:
-            with open(url_or_path, 'rb') as f:
-                tile_data = f.read()
-        except IOError as e:
-            logging.error(f"Failed to read file {url_or_path}: {e}")
-            return None
-    
+        if args.z is None or args.x is None or args.y is None:
+            raise ValueError("-z, -x, -y must be specified for MBTiles or PBF file!")
+        z = args.z
+        x = args.x
+        y = args.y
+        flip_y = (1 << z) - 1 - y
+        if url_or_path.endswith('.mbtiles'):
+            try:
+                conn = sqlite3.connect(url_or_path)
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT tile_data 
+                    FROM tiles 
+                    WHERE zoom_level=? 
+                    AND tile_column=? 
+                    AND tile_row=?''',                    
+                    (z, x, (y)))
+                row = cursor.fetchone()
+                conn.close()
+                if row:
+                    tile_data = row[0]
+                else:
+                    logging.error(f"Tile not found in MBTiles file at zoom_level={z}, tile_column={x}, tile_row={(1 << z) - 1 - y}")
+                    return None
+            except sqlite3.Error as e:
+                logging.error(f"Failed to read MBTiles file {url_or_path}: {e}")
+                return None
+        
+        elif  url_or_path.endswith('.pbf'):
+            try:
+                with open(url_or_path, 'rb') as f:
+                    tile_data = f.read()
+            except IOError as e:
+                logging.error(f"Failed to read file {url_or_path}: {e}")
+                return None
     # Decompress tile_data
     if tile_data:
         try:
@@ -68,33 +85,8 @@ def fetch_vector_tile(url_or_path, x, y, z):
                 tile_data = zlib.decompress(tile_data) 
         except Exception as e:
             logging.error(f"Failed to decompress gzip data: {e}")
-            return None
-    
-    return tile_data
-
-
-def convert_pbf_to_geojson(vt_content, x, y, z, output_file):
-    try:
-        features = vt_bytes_to_geojson(vt_content, x, y, z)
-        with open(output_file, 'w') as f:
-            json.dump(features, f, indent=2)
-        print(f"GeoJSON data has been saved to {output_file}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-def main():
-    parser = argparse.ArgumentParser(description='Convert PBF file or URL to GeoJSON.')
-    parser.add_argument('-i', '--input', type=str, help='Input PBF file, MBTiles file, or URL')
-    parser.add_argument('-o', '--output', type=str, required=True, help='Output GeoJSON file')
-    parser.add_argument('-z', type=int, required=True, help='Tile zoom level')
-    parser.add_argument('-x', type=int, required=True, help='Tile x coordinate')
-    parser.add_argument('-y', type=int, required=True, help='Tile y coordinate')
-    
-    args = parser.parse_args()
-    
-    vt_content = fetch_vector_tile(args.input, args.x, args.y, args.z)
-    if vt_content:
-        convert_pbf_to_geojson(vt_content, args.x, args.y, args.z, args.output)
+            return None        
+        tile_data_to_geojson(tile_data, z,x,y,args.output)
 
 if __name__ == '__main__':
     main()

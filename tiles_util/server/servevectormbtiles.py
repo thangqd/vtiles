@@ -112,7 +112,7 @@ class MBTilesApplication:
                         tile_data = tile_results[0]
                         status = '200 OK'
                         response_headers = [('Content-type', self.tile_content_type),
-                                            ('Content-Encoding', self.tile_content_encoding)]
+                                             ('Content-Encoding', self.tile_content_encoding)]
                         start_response(status, response_headers)
                         return [tile_data]
                     else:

@@ -14,7 +14,7 @@ def _is_url(uri: str) -> bool:
     return urlparse(uri).scheme != ""
 
 
-def vt_bytes_to_geojson(b_content: bytes, x: int, y: int, z: int, layer=None) -> dict:
+def vt_bytes_to_geojson(b_content: bytes, z: int, x: int, y: int, layer=None) -> dict:
     """
     Make a GeoJSON from bytes in the vector tiles format.
     :param b_content: the bytes to convert.
