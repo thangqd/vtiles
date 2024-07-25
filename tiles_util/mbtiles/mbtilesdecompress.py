@@ -1,4 +1,4 @@
-import argparse
+import argparse,os
 import sqlite3
 import zlib
 import gzip
@@ -18,57 +18,62 @@ def decompress_tile_data(tile_data):
     return tile_data          
 
 def decompress_mbtiles(input_mbtiles, output_mbtiles):
-    try:
-        # Copy the original MBTiles file to the output path
-        shutil.copyfile(input_mbtiles, output_mbtiles)
+    if os.path.exists(output_mbtiles):
+        os.remove(output_mbtiles)
+    # Copy the original MBTiles file to the output path
+    shutil.copyfile(input_mbtiles, output_mbtiles)
 
-        # Open the copied MBTiles file
-        conn = sqlite3.connect(output_mbtiles)
-        cursor = conn.cursor()
+    # Open the copied MBTiles file
+    conn = sqlite3.connect(output_mbtiles)
+    cursor = conn.cursor()
 
-        # Check if the tiles table is a view
-        cursor.execute("SELECT type FROM sqlite_master WHERE name='tiles'")
-        result = cursor.fetchone()
+    # Check if the tiles table is a view
+    cursor.execute("SELECT type FROM sqlite_master WHERE name='tiles'")
+    result = cursor.fetchone()
 
-        if result and result[0] == 'view':
-            # Create a new table named tiles_new
-            cursor.execute("CREATE TABLE tiles_new (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB)")
-            
-            # Select data from the view
-            cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles")
-            rows = cursor.fetchall()
-            
-            # Insert decompressed data into the new table
-            for zoom_level, tile_column, tile_row, tile_data in tqdm(rows, desc="Decompressing tiles", unit="tile"):
+    if result and result[0] == 'view':
+        # Create a new table named tiles_new
+        cursor.execute("CREATE TABLE tiles_new (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB)")
+        
+        # Select data from the view
+        cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles order by zoom_level")
+        rows = cursor.fetchall()
+        
+        # Insert decompressed data into the new table
+        for zoom_level, tile_column, tile_row, tile_data in tqdm(rows, desc="Decompressing tiles", unit="tile"):
+            try:
                 decompressed_data = decompress_tile_data(tile_data)
                 cursor.execute(
                     "INSERT INTO tiles_new (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)",
                     (zoom_level, tile_column, tile_row, decompressed_data)
                 )
+            except Exception as e:
+                print(f"Error decompressing tile {zoom_level}/{tile_column}/{tile_row}: {e}")
             
-            # Drop the view and rename the new table to tiles
-            cursor.execute("DROP VIEW tiles")
-            cursor.execute("ALTER TABLE tiles_new RENAME TO tiles")
-            cursor.execute("CREATE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row)")
-        else:
-            # Decompress tile data in the existing tiles table
-            cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles")
-            rows = cursor.fetchall()
-            
-            # Add tqdm progress bar
-            for zoom_level, tile_column, tile_row, tile_data in tqdm(rows, desc="Decompressing tiles", unit="tile"):
+        # Drop the view and rename the new table to tiles
+        cursor.execute("DROP VIEW tiles")
+        cursor.execute("ALTER TABLE tiles_new RENAME TO tiles")
+        cursor.execute("CREATE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row)")
+    else:
+        # Decompress tile data in the existing tiles table
+        cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles order by zoom_level")
+        tiles = cursor.fetchall()
+        
+        # Add tqdm progress bar
+        for zoom_level, tile_column, tile_row, tile_data in tqdm(tiles, desc="Decompressing tiles", unit="tile"):
+            try:
                 decompressed_data = decompress_tile_data(tile_data)
                 cursor.execute(
                     "UPDATE tiles SET tile_data = ? WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?",
                     (decompressed_data, zoom_level, tile_column, tile_row)
                 )
-            
-            cursor.execute("CREATE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row)")
-            # Commit and close connections
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logging.error(f"Error decompressing MBTiles: {e}")
+            except Exception as e:
+                print(f"Error decompressing tile {zoom_level}/{tile_column}/{tile_row}: {e}")
+        
+        cursor.execute("CREATE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row)")
+    # Commit and close connections
+    conn.commit()
+    conn.close()
 
 
 def main():

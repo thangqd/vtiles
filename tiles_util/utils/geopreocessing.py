@@ -20,6 +20,110 @@ import ujson
 CHUNK_SIZE = 1024
 
 
+def fix_wkt(data):
+    result = []
+    
+    for key in data:
+        feature_collection = data[key]
+        features = []
+        
+        for feature in feature_collection.get('features', []):
+            geom = feature.get('geometry', {})
+            geom_type = geom.get('type')
+            coords = geom.get('coordinates')
+            
+            if geom_type is None or coords is None or (isinstance(coords, (list, dict)) and not coords):
+                # Handle null or empty geometry
+                wkt_geom = f'{geom_type or "GEOMETRY"} EMPTY'
+                
+            elif geom_type == 'Polygon':
+                if not coords or not coords[0]:
+                    wkt_geom = 'POLYGON EMPTY'
+                else:
+                    wkt_geom = 'POLYGON ((' + ', '.join([' '.join(map(str, pt)) for pt in coords[0]]) + '))'
+                
+            elif geom_type == 'LineString':
+                if not coords:
+                    wkt_geom = 'LINESTRING EMPTY'
+                else:
+                    wkt_geom = 'LINESTRING (' + ', '.join([' '.join(map(str, pt)) for pt in coords]) + ')'
+                
+            elif geom_type == 'MultiPolygon':
+                if not coords:
+                    wkt_geom = 'MULTIPOLYGON EMPTY'
+                else:
+                    polygons = []
+                    for polygon in coords:
+                        if not polygon:
+                            polygons.append('EMPTY')
+                        else:
+                            polygons.append('((' + ', '.join([' '.join(map(str, pt)) for pt in polygon[0]]) + '))')
+                    wkt_geom = 'MULTIPOLYGON (' + ', '.join(polygons) + ')'
+                
+            elif geom_type == 'MultiLineString':
+                if not coords:
+                    wkt_geom = 'MULTILINESTRING EMPTY'
+                else:
+                    lines = []
+                    for line in coords:
+                        if not line:
+                            lines.append('EMPTY')
+                        else:
+                            lines.append('(' + ', '.join([' '.join(map(str, pt)) for pt in line]) + ')')
+                    wkt_geom = 'MULTILINESTRING (' + ', '.join(lines) + ')'
+                
+            elif geom_type == 'Point':
+                if not coords:
+                    wkt_geom = 'POINT EMPTY'
+                else:
+                    wkt_geom = 'POINT (' + ' '.join(map(str, coords)) + ')'
+                
+            elif geom_type == 'MultiPoint':
+                if not coords:
+                    wkt_geom = 'MULTIPOINT EMPTY'
+                else:
+                    points = []
+                    for point in coords:
+                        points.append(' '.join(map(str, point)))
+                    wkt_geom = 'MULTIPOINT (' + ', '.join(points) + ')'
+                
+            else:
+                # Skip unsupported geometry types
+                continue
+            
+            features.append({
+                'geometry': wkt_geom,
+                'properties': feature.get('properties', {})
+            })
+        
+        result.append({
+            'name': key,
+            'features': features
+        })
+    
+    return result
+
+
+def num2deg(xtile, ytile, zoom):
+		n = 2.0 ** zoom
+		lon_deg = xtile / n * 360.0 - 180.0
+		lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
+		lat_deg = math.degrees(lat_rad)
+		return (lat_deg, lon_deg)
+
+def flip_y(zoom, y):
+  return (2**zoom-1) - y
+
+def safe_makedir(d):
+  if os.path.exists(d):
+    return
+  os.makedirs(d)
+
+def set_dir(d):
+  safe_makedir(d)
+  os.chdir(d)
+
+
 def get_files(path):
     """Returns an iterable containing the full path of all files in the
     specified path.

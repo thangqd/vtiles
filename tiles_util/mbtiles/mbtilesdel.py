@@ -1,93 +1,11 @@
 import sqlite3
 from tiles_util.utils.mapbox_vector_tile import encode, decode
-import argparse
+from tiles_util.utils.geopreocessing import fix_wkt
+import argparse, os
 import shutil
-import gzip
+import gzip, zlib
 import json
 from tqdm import tqdm
-
-def fix_wkt(data):
-    result = []
-    
-    for key in data:
-        feature_collection = data[key]
-        features = []
-        
-        for feature in feature_collection.get('features', []):
-            geom = feature.get('geometry', {})
-            geom_type = geom.get('type')
-            coords = geom.get('coordinates')
-            
-            if geom_type is None or coords is None or (isinstance(coords, (list, dict)) and not coords):
-                # Handle null or empty geometry
-                wkt_geom = f'{geom_type or "GEOMETRY"} EMPTY'
-                
-            elif geom_type == 'Polygon':
-                if not coords or not coords[0]:
-                    wkt_geom = 'POLYGON EMPTY'
-                else:
-                    wkt_geom = 'POLYGON ((' + ', '.join([' '.join(map(str, pt)) for pt in coords[0]]) + '))'
-                
-            elif geom_type == 'LineString':
-                if not coords:
-                    wkt_geom = 'LINESTRING EMPTY'
-                else:
-                    wkt_geom = 'LINESTRING (' + ', '.join([' '.join(map(str, pt)) for pt in coords]) + ')'
-                
-            elif geom_type == 'MultiPolygon':
-                if not coords:
-                    wkt_geom = 'MULTIPOLYGON EMPTY'
-                else:
-                    polygons = []
-                    for polygon in coords:
-                        if not polygon:
-                            polygons.append('EMPTY')
-                        else:
-                            polygons.append('((' + ', '.join([' '.join(map(str, pt)) for pt in polygon[0]]) + '))')
-                    wkt_geom = 'MULTIPOLYGON (' + ', '.join(polygons) + ')'
-                
-            elif geom_type == 'MultiLineString':
-                if not coords:
-                    wkt_geom = 'MULTILINESTRING EMPTY'
-                else:
-                    lines = []
-                    for line in coords:
-                        if not line:
-                            lines.append('EMPTY')
-                        else:
-                            lines.append('(' + ', '.join([' '.join(map(str, pt)) for pt in line]) + ')')
-                    wkt_geom = 'MULTILINESTRING (' + ', '.join(lines) + ')'
-                
-            elif geom_type == 'Point':
-                if not coords:
-                    wkt_geom = 'POINT EMPTY'
-                else:
-                    wkt_geom = 'POINT (' + ' '.join(map(str, coords)) + ')'
-                
-            elif geom_type == 'MultiPoint':
-                if not coords:
-                    wkt_geom = 'MULTIPOINT EMPTY'
-                else:
-                    points = []
-                    for point in coords:
-                        points.append(' '.join(map(str, point)))
-                    wkt_geom = 'MULTIPOINT (' + ', '.join(points) + ')'
-                
-            else:
-                # Skip unsupported geometry types
-                continue
-            
-            features.append({
-                'geometry': wkt_geom,
-                'properties': feature.get('properties', {})
-            })
-        
-        result.append({
-            'name': key,
-            'features': features
-        })
-    
-    return result
 
 def update_metadata(conn, layers_to_delete):
     cursor = conn.cursor()
@@ -120,52 +38,90 @@ def update_metadata(conn, layers_to_delete):
         print("No json metadata found to update.")
 
 
-def delete_layers_from_mbtiles(input_path, output_path, layers_to_delete):
+def delete_layers_from_mbtiles(input_mbtiles, output_mbtiles, layers_to_delete):
+    if os.path.exists(output_mbtiles):
+        os.remove(output_mbtiles)
     # Copy the input MBTiles file to the output path
-    shutil.copyfile(input_path, output_path)
+    shutil.copyfile(input_mbtiles, output_mbtiles)
 
     # Connect to the copied MBTiles file
-    with sqlite3.connect(output_path) as conn:
-        # Update metadata
-        update_metadata(conn, layers_to_delete)
+    conn = sqlite3.connect(output_mbtiles)
+    cursor = conn.cursor()        
+    update_metadata(conn, layers_to_delete)
 
-        cursor = conn.cursor()
+    # Check if the tiles table is a view
+    cursor.execute("SELECT type FROM sqlite_master WHERE name='tiles'")
+    result = cursor.fetchone()
 
-        # Select all tiles
-        cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles")
+    if result and result[0] == 'view':
+        # Create a new table named tiles_new
+        cursor.execute("CREATE TABLE tiles_new AS SELECT * FROM tiles")
+
+        # Select data from the tiles view
+        cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles order by zoom_level")
         tiles = cursor.fetchall()
-
-        # Create tqdm progress bar
-        for tile in tqdm(tiles, desc="Processing tiles", unit="tile"):
-            zoom_level, tile_column, tile_row, tile_data = tile
-
-            # Decompress the tile data if it is compressed
+        
+        # Insert decompressed data into the new table
+        for zoom_level, tile_column, tile_row, tile_data in tqdm(tiles, desc="Processing tiles", unit="tile"):
+             # Decompress the tile data if it is compressed with GZIP or ZLIP
             if tile_data[:2] == b'\x1f\x8b':
                 tile_data = gzip.decompress(tile_data)
+            elif tile_data[:2] == b'\x78\x9c' or tile_data[:2] == b'\x78\x01' or tile_data[:2] == b'\x78\xda':
+                tile_data = zlib.decompress(tile_data)
 
-            # Decode the tile data
             decoded_tile = decode(tile_data)
-            decoded_tile = fix_wkt(decoded_tile)
-
+            decoded_tile = fix_wkt(decoded_tile)          
             # Remove the specified layers
             decoded_tile_filtered = [item for item in decoded_tile if item["name"] not in layers_to_delete]
 
-            if len(decoded_tile_filtered) < len(decoded_tile):
-                # Encode and compress the modified tile
-                try:
-                    encoded_tile = encode(decoded_tile_filtered)
-                    encoded_tile_gzip = gzip.compress(encoded_tile)
+            # Encode and compress the modified tile
+            try:
+                encoded_tile = encode(decoded_tile_filtered)
+                encoded_tile_gzipped = gzip.compress(encoded_tile)
+                # Update the tile data in the database
+                cursor.execute("""
+                    UPDATE tiles_new
+                    SET tile_data = ?
+                    WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?""",
+                    (encoded_tile_gzipped, zoom_level, tile_column, tile_row))
+            except Exception as e:
+                print(f"Error processing tile {zoom_level}/{tile_column}/{tile_row}: {e}")
+        # Drop the view and rename the new table to tiles
+        cursor.execute("DROP VIEW tiles")
+        cursor.execute("ALTER TABLE tiles_new RENAME TO tiles")
+        cursor.execute("CREATE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row)")
+    else:
+        # Select all from tiles table
+        cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles order by zoom_level")
+        tiles = cursor.fetchall()            
+        # Add tqdm progress bar
+        for zoom_level, tile_column, tile_row, tile_data in tqdm(tiles, desc="Processing tiles", unit="tile"):
+            # Decompress the tile data if it is compressed with GZIP or ZLIP
+            if tile_data[:2] == b'\x1f\x8b':
+                tile_data = gzip.decompress(tile_data)
+            elif tile_data[:2] == b'\x78\x9c' or tile_data[:2] == b'\x78\x01' or tile_data[:2] == b'\x78\xda':
+                tile_data = zlib.decompress(tile_data)
 
-                    # Update the tile data in the database
-                    cursor.execute("""
-                        UPDATE tiles
-                        SET tile_data = ?
-                        WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?""",
-                        (encoded_tile_gzip, zoom_level, tile_column, tile_row))
-                except Exception as e:
-                    print(f"Error processing tile {zoom_level}/{tile_column}/{tile_row}: {e}")
+            decoded_tile = decode(tile_data)
+            decoded_tile = fix_wkt(decoded_tile)          
+            # Remove the specified layers
+            decoded_tile_filtered = [item for item in decoded_tile if item["name"] not in layers_to_delete]
 
-        conn.commit()
+            # Encode and compress the modified tile
+            try:
+                encoded_tile = encode(decoded_tile_filtered)
+                encoded_tile_gzipped = gzip.compress(encoded_tile)
+                # Update the tile data in the database
+                cursor.execute("""
+                    UPDATE tiles
+                    SET tile_data = ?
+                    WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?""",
+                    (encoded_tile_gzipped, zoom_level, tile_column, tile_row))
+            except Exception as e:
+                print(f"Error processing tile {zoom_level}/{tile_column}/{tile_row}: {e}")
+        cursor.execute("CREATE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row)")
+
+    conn.commit()
     conn.close()
     
 def main():

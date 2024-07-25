@@ -3,18 +3,7 @@ import sqlite3
 import json
 import argparse
 from tqdm import tqdm
-
-def flip_y(zoom, y):
-  return (2**zoom-1) - y
-
-def safe_makedir(d):
-  if os.path.exists(d):
-    return
-  os.makedirs(d)
-
-def set_dir(d):
-  safe_makedir(d)
-  os.chdir(d)
+from tiles_util.utils.geopreocessing import flip_y, safe_makedir
 
 def extract_metadata(cursor):
   """Extract metadata from MBTiles file."""

@@ -1,16 +1,7 @@
 import sqlite3, argparse, sys, math, logging, time, os, json
 from tqdm import tqdm
 logger = logging.getLogger(__name__)
-
-def num2deg(xtile, ytile, zoom):
-		n = 2.0 ** zoom
-		lon_deg = xtile / n * 360.0 - 180.0
-		lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
-		lat_deg = math.degrees(lat_rad)
-		return (lat_deg, lon_deg)
-
-def flip_y(zoom, y):
-  return (2**zoom-1) - y
+from tiles_util.utils.geopreocessing import num2deg, flip_y
 
 def mbtiles_connect(mbtiles_file):
   try:
