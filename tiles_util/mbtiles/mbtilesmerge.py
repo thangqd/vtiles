@@ -3,13 +3,95 @@ import os
 import shutil
 from tiles_util.utils.mapbox_vector_tile import encode, decode
 import argparse
-import gzip, zlib
+import gzip
 import json
 import logging
 from tqdm import tqdm
-from tiles_util.utils.geopreocessing import fix_wkt
 
 logging.basicConfig(level=logging.INFO)
+
+def fix_wkt(data):
+    result = []
+    
+    for key in data:
+        feature_collection = data[key]
+        features = []
+        
+        for feature in feature_collection.get('features', []):
+            geom = feature.get('geometry', {})
+            geom_type = geom.get('type')
+            coords = geom.get('coordinates')
+            
+            if geom_type is None or coords is None or (isinstance(coords, (list, dict)) and not coords):
+                # Handle null or empty geometry
+                wkt_geom = f'{geom_type or "GEOMETRY"} EMPTY'
+                
+            elif geom_type == 'Polygon':
+                if not coords or not coords[0]:
+                    wkt_geom = 'POLYGON EMPTY'
+                else:
+                    wkt_geom = 'POLYGON ((' + ', '.join([' '.join(map(str, pt)) for pt in coords[0]]) + '))'
+                
+            elif geom_type == 'LineString':
+                if not coords:
+                    wkt_geom = 'LINESTRING EMPTY'
+                else:
+                    wkt_geom = 'LINESTRING (' + ', '.join([' '.join(map(str, pt)) for pt in coords]) + ')'
+                
+            elif geom_type == 'MultiPolygon':
+                if not coords:
+                    wkt_geom = 'MULTIPOLYGON EMPTY'
+                else:
+                    polygons = []
+                    for polygon in coords:
+                        if not polygon:
+                            polygons.append('EMPTY')
+                        else:
+                            polygons.append('((' + ', '.join([' '.join(map(str, pt)) for pt in polygon[0]]) + '))')
+                    wkt_geom = 'MULTIPOLYGON (' + ', '.join(polygons) + ')'
+                
+            elif geom_type == 'MultiLineString':
+                if not coords:
+                    wkt_geom = 'MULTILINESTRING EMPTY'
+                else:
+                    lines = []
+                    for line in coords:
+                        if not line:
+                            lines.append('EMPTY')
+                        else:
+                            lines.append('(' + ', '.join([' '.join(map(str, pt)) for pt in line]) + ')')
+                    wkt_geom = 'MULTILINESTRING (' + ', '.join(lines) + ')'
+                
+            elif geom_type == 'Point':
+                if not coords:
+                    wkt_geom = 'POINT EMPTY'
+                else:
+                    wkt_geom = 'POINT (' + ' '.join(map(str, coords)) + ')'
+                
+            elif geom_type == 'MultiPoint':
+                if not coords:
+                    wkt_geom = 'MULTIPOINT EMPTY'
+                else:
+                    points = []
+                    for point in coords:
+                        points.append(' '.join(map(str, point)))
+                    wkt_geom = 'MULTIPOINT (' + ', '.join(points) + ')'
+                
+            else:
+                # Skip unsupported geometry types
+                continue
+            
+            features.append({
+                'geometry': wkt_geom,
+                'properties': feature.get('properties', {})
+            })
+        
+        result.append({
+            'name': key,
+            'features': features
+        })
+    
+    return result
 
 def merge_json_data(data1, data2):
     # Create a dictionary to combine features by layer name
@@ -37,45 +119,42 @@ def merge_json_data(data1, data2):
     return merged_data
 
 
-def merge_tiles(tile1, tile2):
+def merge_tiles(tile1, tile2, z=None, x=None, y=None):
     try:        
         if tile1 and tile2:
             if tile1[:2] == b'\x1f\x8b':
                 tile1 = gzip.decompress(tile1)
-            elif tile1[:2] == b'\x78\x9c' or tile1[:2] == b'\x78\x01' or tile1[:2] == b'\x78\xda':
-                tile1 = zlib.decompress(tile1)
             decoded_tile1 = decode(tile1)
             decoded_tile1_fixed = fix_wkt(decoded_tile1)
 
             if tile2[:2] == b'\x1f\x8b':
                 tile2 = gzip.decompress(tile2)
-            elif tile2[:2] == b'\x78\x9c' or tile2[:2] == b'\x78\x01' or tile2[:2] == b'\x78\xda':
-                tile2 = zlib.decompress(tile2)
             decoded_tile2 = decode(tile2)
             decoded_tile2_fixed = fix_wkt(decoded_tile2)
 
             merged_tiles = merge_json_data (decoded_tile1_fixed,decoded_tile2_fixed)
-            # print (merged_tiles)
             merged_tiles_encoded = encode(merged_tiles)
             encoded_tile_encoded_gzip = gzip.compress(merged_tiles_encoded)            
             return encoded_tile_encoded_gzip
-                
+        
         elif tile1:
-            if tile1[:2] == b'\x1f\x8b':
-                return tile1
-            elif tile1[:2] == b'\x78\x9c' or tile1[:2] == b'\x78\x01' or tile1[:2] != b'\x78\xda':
-                tile1_decompressed_zlib = zlib.decompress(tile1)
-                return gzip.compress(tile1_decompressed_zlib)
-                
+            return gzip.compress(tile1) if tile1[:2] != b'\x1f\x8b' else tile1
         elif tile2:
-            if tile2[:2] == b'\x1f\x8b':
-                return tile1
-            elif tile2[:2] == b'\x78\x9c' or tile2[:2] == b'\x78\x01' or tile2[:2] != b'\x78\xda':
-                tile2_decompressed_zlib = zlib.decompress(tile2)
-                return gzip.compress(tile2_decompressed_zlib)     
+            return gzip.compress(tile2) if tile2[:2] != b'\x1f\x8b' else tile2
+        
+        return None
         
     except Exception as e:
-        return None   
+        logging.error(f"Error merging tiles at (z={z}, x={x}, y={y}): {e}")
+        file_name = f"{z}_{x}_{y}.json"
+        # Save merged_tiles content to the file
+        with open(file_name, 'w') as f:
+            # Serialize merged_tiles to JSON
+            json.dump(merged_tiles, f, indent=2)
+        logging.info(f"Saved merged tiles data to {file_name}")
+        if tile1:
+            return gzip.compress(tile1) if tile1[:2] != b'\x1f\x8b' else tile1
+
 
 def merge_vector_layers(layer1, layer2):
     layer1_ids = {layer['id'] for layer in layer1}
@@ -139,64 +218,90 @@ def merge_metadata(metadata_dicts):
                 merged_metadata[name] = value
     return merged_metadata
 
+def merge_mbtiles(mbtiles_files, output_mbtiles):
+    try:
+        if os.path.exists(output_mbtiles):
+            os.remove(output_mbtiles)
+        shutil.copyfile(mbtiles_files[0], output_mbtiles)
 
-def get_zoom_levels_from_tiles(mbtiles_path):
-    conn = sqlite3.connect(mbtiles_path)
-    cursor = conn.cursor()
-    cursor.execute("SELECT MIN(zoom_level), MAX(zoom_level) FROM tiles;")
-    min_zoom, max_zoom = cursor.fetchone()
-    conn.close()
-    return min_zoom, max_zoom
+        connections = [sqlite3.connect(mbtiles) for mbtiles in mbtiles_files]
+        cursors_in = [conn.cursor() for conn in connections]
+        conn_out = sqlite3.connect(output_mbtiles)       
+        cur_out = conn_out.cursor()
 
-def get_combined_zoom_levels(mbtiles_files):
-    combined_min_zoom = None
-    combined_max_zoom = None
-    
-    for mbtiles_file in mbtiles_files:
-        min_zoom, max_zoom = get_zoom_levels_from_tiles(mbtiles_file)
+        cur_out.execute('CREATE TABLE IF NOT EXISTS metadata (name TEXT, value TEXT)')
+        cur_out.execute('CREATE TABLE tiles_new (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB, PRIMARY KEY (zoom_level, tile_column, tile_row))')
+        # cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row)')
+        cur_out.execute('''
+            INSERT INTO tiles_new (zoom_level, tile_column, tile_row, tile_data)
+            SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles;
+            ''')
+        cur_out.execute("SELECT type FROM sqlite_master WHERE name='tiles'")
+        result = cur_out.fetchone()
+
+        if result:
+            if result[0] == 'view':
+                cur_out.execute('DROP VIEW tiles')
+            elif result[0] == 'table':
+                cur_out.execute('DROP TABLE tiles')
+
+        cur_out.execute ('ALTER TABLE tiles_new RENAME TO tiles')
+        cur_out.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles')
+
+        # Merging tiles
+        tiles = {}
+        output_rows = cur_out.fetchall()
+        for (z, x, y, tile) in output_rows:
+            key = (z, x, y)
+            tiles[key] = tile
+        for i, cursor in enumerate(cursors_in):
+            if i == 0:
+                continue  # Skip the cursor for the first MBTiles file     
+            mbtiles_name = os.path.basename(mbtiles_files[i])
+            cursor.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles')
+            rows = cursor.fetchall()
+            for (z, x, y, tile) in tqdm(rows, desc=f"Merging tiles from {mbtiles_name}"):
+                key = (z, x, y)
+                if key in tiles:
+                    tiles[key] = merge_tiles(tiles[key], tile, z, x, y)
+                else:
+                    tiles[key] = tile
+
+        # for key, tile in tiles.items():
+        #     print (key)
+        #     print (decode(gzip.decompress(tile)))
+
+        for key, tile in tqdm(tiles.items(), desc="Inserting merged tiles"):
+            cur_out.execute('INSERT OR REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)', (key[0], key[1], key[2], tile))
+
+        # Merging metadata
+        metadata_dicts = []
+        for i, cursor in enumerate(cursors_in):
+            mbtiles_name = os.path.basename(mbtiles_files[i])
+            cursor.execute('SELECT name, value FROM metadata')
+            metadata_dicts.append({name: value for name, value in cursor.fetchall()})
+
+        merged_metadata = merge_metadata(metadata_dicts)
+
+        for name, value in tqdm(merged_metadata.items(), desc="Inserting merged metadata"):
+            cur_out.execute('INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)', (name, value))
+
+        for conn in connections:
+            conn.close()
         
-        if combined_min_zoom is None or min_zoom < combined_min_zoom:
-            combined_min_zoom = min_zoom
-        
-        if combined_max_zoom is None or max_zoom > combined_max_zoom:
-            combined_max_zoom = max_zoom
-    
-    return combined_min_zoom, combined_max_zoom
-
-def merge_mbtiles(mbtiles_1,mbtiles_2,output_mbtiles):   
-    if os.path.exists(output_mbtiles):
-        os.remove(output_mbtiles)
-    minzoom, maxzoom = get_combined_zoom_levels([mbtiles_1,mbtiles_2])
-    with sqlite3.connect(output_mbtiles) as conn:
-        cursor = conn.cursor()
-        cursor.executescript("""
-        CREATE TABLE metadata (name TEXT, value TEXT);
-        CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);
-        CREATE UNIQUE INDEX name ON metadata (name);
-        CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row);
-        """)
-        metadata = [
-        ("name", "merged MBTiles"),
-        ("type", "overlay"),
-        ("version", "1.0"),
-        ("description", "Merged MBTiles by tiles_util.mbtilesmerge"),
-        ("format", "pbf"),
-        ("minzoom", str(minzoom)),
-        ("maxzoom", str(maxzoom))
-        ]
-        cursor.executemany("INSERT INTO metadata (name, value) VALUES (?, ?)", metadata)
-        conn.commit
-
+        conn_out.commit()
+        conn_out.close()
+    except Exception as e:
+        logging.error(f"Error merging MBTiles: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="Merge multiple MBTiles files into a single MBTiles file.")
-    parser.add_argument('-i1', '--input1', required=True, help='First Input MBTiles to merge.')
-    parser.add_argument('-i2', '--input2', required=True, help='Second Input MBTiles to merge.')
+    parser.add_argument('-i', '--input', nargs='+', required=True, help='Input MBTiles files to merge.')
     parser.add_argument('-o', '--output', required=True, help='Output merged MBTiles file.')
 
     args = parser.parse_args()
 
-    merge_mbtiles(args.input1, args.input2, args.output)
+    merge_mbtiles(args.input, args.output)
 
 if __name__ == '__main__':
     main()
