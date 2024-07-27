@@ -10,7 +10,7 @@ import logging
 from tqdm import tqdm
 
 #### may got error when running not starting by a polygon layers
-# mbtilesmerge -o ./data/_lalala.mbtiles -i ./data/polyline.mbtiles ./data/point.mbtiles ./data/polygon.mbtiles
+# mbtilesmerge -o ./data/merged.mbtiles -i ./data/polyline.mbtiles ./data/point.mbtiles ./data/polygon.mbtiles
 
 logging.basicConfig(level=logging.INFO)
 
@@ -135,18 +135,77 @@ def merge_metadata(metadata_dicts):
                 if name.endswith('json'):  # Check if the metadata name suggests JSON content
                     merged_metadata[name] = merge_json_metadata(merged_metadata[name], value)
                 else:
-                    if merged_metadata[name] != value:
-                        merged_metadata[name] += '; ' + value
+                    # if merged_metadata[name] != value:
+                    merged_metadata[name] += '; ' + value
             else:
                 merged_metadata[name] = value
     return merged_metadata
 
-def merge_mbtiles(mbtiles_files, output_mbtiles):
-    try:
-        if os.path.exists(output_mbtiles):
-            os.remove(output_mbtiles)
-        shutil.copyfile(mbtiles_files[0], output_mbtiles)
+def get_min_zoom(zoom_list):
+    numbers_str = zoom_list.split(';')
+    # Step 2: Convert the number strings to integers or floats
+    numbers = [int(num.strip()) for num in numbers_str]
+    # Step 3: Find the minimum value
+    min_zoom = min(numbers)
+    return str(min_zoom)
 
+def get_max_zoom(zoom_list):
+    numbers_str = zoom_list.split(';')
+    # Step 2: Convert the number strings to integers or floats
+    numbers = [int(num.strip()) for num in numbers_str]
+    # Step 3: Find the minimum value
+    max_zoom = max(numbers)
+    return str(max_zoom)
+
+def get_max_bounds(bounds_str):
+    # Split the string by ';' to get individual bounding boxes
+    boxes = bounds_str.split(';')
+    
+    # Initialize variables to store the max bounds
+    min_lon, min_lat = float('inf'), float('inf')
+    max_lon, max_lat = float('-inf'), float('-inf')
+    
+    for box in boxes:
+        # Strip any extra spaces and split the coordinates
+        coords = [float(coord.strip()) for coord in box.strip().split(',')]
+        if len(coords) == 4:
+            lon1, lat1, lon2, lat2 = coords
+            # Update the max bounds
+            min_lon = min(min_lon, lon1, lon2)
+            min_lat = min(min_lat, lat1, lat2)
+            max_lon = max(max_lon, lon1, lon2)
+            max_lat = max(max_lat, lat1, lat2)
+    
+    # Return the maximum bounds as a string
+    return f"{min_lon},{min_lat},{max_lon},{max_lat}"
+
+def get_center_of_bound(bounds_str):
+    # Split the string into individual coordinates
+    coords = [float(coord) for coord in bounds_str.split(',')]
+    if len(coords) == 4:
+        lon1, lat1, lon2, lat2 = coords
+        # Calculate the center of the bounding box
+        center_lon = (lon1 + lon2) / 2
+        center_lat = (lat1 + lat2) / 2
+        # Return the center as a formatted string
+        return f"{center_lon},{center_lat}"
+    else:
+        raise ValueError("Invalid bounds string format")
+
+def merge_mbtiles(mbtiles_files, output_mbtiles):
+    notexisted_files = [file for file in mbtiles_files if not os.path.exists(file)]
+
+    if notexisted_files:
+        print(f"Error: The following input MBTiles files are not existed:")
+        for file in notexisted_files:
+            print(f"  - {file}")
+        return
+
+    if os.path.exists(output_mbtiles):
+        os.remove(output_mbtiles)
+    shutil.copyfile(mbtiles_files[0], output_mbtiles)
+
+    try:
         conn_out = sqlite3.connect(output_mbtiles)       
         cur_out = conn_out.cursor()
 
@@ -194,28 +253,84 @@ def merge_mbtiles(mbtiles_files, output_mbtiles):
 
         for key, tile in tqdm(tiles.items(), desc="Inserting merged tiles"):
             cur_out.execute('INSERT OR REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)', (key[0], key[1], key[2], tile))
-
+    except Exception as e:
+            logging.error(f"Error Merging tile_data {mbtiles_name}: {e}")
+    
         # Merging metadata
-        metadata_dicts = []
-        for i, cursor in enumerate(cursors_in):
-            if i == 0:
-                continue  # Skip the cursor for the first MBTiles file     
-            mbtiles_name = os.path.basename(mbtiles_files[i])
+    metadata_dicts = []
+    for i, cursor in enumerate(cursors_in):
+        try:
+            # if i == 0:
+            #     continue  # Skip the cursor for the first MBTiles file           
+            mbtiles_name = os.path.basename(mbtiles_files[i])  
             cursor.execute('SELECT name, value FROM metadata')
             metadata_dicts.append({name: value for name, value in cursor.fetchall()})
+        except Exception as e:
+            logging.error(f"Error Merging metadata {mbtiles_name}: {e}")
 
-        merged_metadata = merge_metadata(metadata_dicts)
+    merged_metadata = merge_metadata(metadata_dicts)
 
-        for name, value in tqdm(merged_metadata.items(), desc="Inserting merged metadata"):
-            cur_out.execute('INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)', (name, value))
+    for name, value in tqdm(merged_metadata.items(), desc=f"Inserting merged metadata"):
+        cur_out.execute('INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)', (name, value))
 
-        for conn in connections:
-            conn.close()
-        
-        conn_out.commit()
-        conn_out.close()
-    except Exception as e:
-            logging.error(f"Error Merging MBTiles: {e}")
+    # Update formate
+    cur_out.execute(''' UPDATE metadata SET value = 'pbf' where name = 'format' ''')
+    
+    # Update minzoom
+    cur_out.execute("SELECT value FROM metadata WHERE name = 'minzoom'")
+    zoom_levels = cur_out.fetchone()[0]  # Fetch the value
+    if zoom_levels:
+        min_zoom = get_min_zoom(zoom_levels)
+        cur_out.execute('''
+            UPDATE metadata 
+            SET value = ? 
+            WHERE name = 'minzoom'
+        ''', (min_zoom,))
+
+    # Update maxzoom
+    cur_out.execute("SELECT value FROM metadata WHERE name = 'maxzoom'")
+    zoom_levels = cur_out.fetchone()[0]  # Fetch the value
+
+    max_zoom = 0
+    if zoom_levels:
+        max_zoom = get_max_zoom(zoom_levels)
+        cur_out.execute('''
+            UPDATE metadata 
+            SET value = ? 
+            WHERE name = 'maxzoom'
+        ''', (max_zoom,))
+    
+
+    # Update max bounds
+    cur_out.execute("SELECT value FROM metadata WHERE name = 'bounds'")
+    bounds = cur_out.fetchone()[0]  # Fetch the value
+    max_bounds = get_max_bounds(bounds)
+
+    cur_out.execute('''
+        UPDATE metadata 
+        SET value = ? 
+        WHERE name = 'bounds'
+        ''', (max_bounds,))
+
+    # Update center
+    cur_out.execute("SELECT value FROM metadata WHERE name = 'bounds'")
+    bound = cur_out.fetchone()[0]  # Fetch the value
+    center_of_bound = get_center_of_bound(bound) +f',{max_zoom}'
+
+    cur_out.execute('''
+        UPDATE metadata 
+        SET value = ? 
+        WHERE name = 'center'
+        ''', (center_of_bound,))
+
+
+    for conn in connections:
+        conn.close()
+    
+    conn_out.commit()
+    conn_out.close()
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="Merge multiple MBTiles files into a single MBTiles file.")
