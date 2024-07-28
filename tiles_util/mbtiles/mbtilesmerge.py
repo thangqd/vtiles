@@ -9,35 +9,33 @@ import json
 import logging
 from tqdm import tqdm
 
-#### may got error when running not starting by a polygon layers
-# mbtilesmerge -o ./data/merged.mbtiles -i ./data/polyline.mbtiles ./data/point.mbtiles ./data/polygon.mbtiles
 
 logging.basicConfig(level=logging.INFO)
 
-def merge_json_data(data1, data2):
+def merge_json_layers(layer1, layer2):
     # Create a dictionary to combine features by layer name
-    combined_data = {}
+    combined_layer = {}
     
     # Add features from the first JSON data
-    for layer in data1:
+    for layer in layer1:
         name = layer['name']
-        if name not in combined_data:
-            combined_data[name] = layer
+        if name not in combined_layer:
+            combined_layer[name] = layer
         else:
-            combined_data[name]['features'].extend(layer['features'])
+            combined_layer[name]['features'].extend(layer['features'])
 
     # Add features from the second JSON data
-    for layer in data2:
+    for layer in layer2:
         name = layer['name']
-        if name not in combined_data:
-            combined_data[name] = layer
+        if name not in combined_layer:
+            combined_layer[name] = layer
         else:
-            combined_data[name]['features'].extend(layer['features'])
+            combined_layer[name]['features'].extend(layer['features'])
 
     # Convert combined data to a list
-    merged_data = list(combined_data.values())
+    merged_layer= list(combined_layer.values())
     
-    return merged_data
+    return merged_layer
 
 def merge_tiles(tile1, tile2,z=None, x=None, y=None):
     try:        
@@ -56,26 +54,27 @@ def merge_tiles(tile1, tile2,z=None, x=None, y=None):
             decoded_tile2 = decode(tile2)
             decoded_tile2_fixed = fix_wkt(decoded_tile2)
 
-            merged_tiles = merge_json_data (decoded_tile1_fixed,decoded_tile2_fixed)
+            merged_layer = merge_json_layers(decoded_tile1_fixed,decoded_tile2_fixed)
             # print (merged_tiles)
-            merged_tiles_encoded = encode(merged_tiles)
-            encoded_tile_encoded_gzip = gzip.compress(merged_tiles_encoded)   
-            return encoded_tile_encoded_gzip
+            merged_tile_encoded = encode(merged_layer)
+            merged_tile_encoded_gzip = gzip.compress(merged_tile_encoded)   
+            return merged_tile_encoded_gzip
                 
         elif tile1:
             if tile1[:2] == b'\x1f\x8b':
                 return tile1
-            elif tile1[:2] == b'\x78\x9c' or tile1[:2] == b'\x78\x01' or tile1[:2] != b'\x78\xda':
+            elif tile1[:2] == b'\x78\x9c' or tile1[:2] == b'\x78\x01' or tile1[:2] == b'\x78\xda':
                 tile1_decompressed_zlib = zlib.decompress(tile1)
                 return gzip.compress(tile1_decompressed_zlib)
-                
+            else: return  gzip.compress(tile1)   
+        
         elif tile2:
             if tile2[:2] == b'\x1f\x8b':
                 return tile2
-            elif tile2[:2] == b'\x78\x9c' or tile2[:2] == b'\x78\x01' or tile2[:2] != b'\x78\xda':
+            elif tile2[:2] == b'\x78\x9c' or tile2[:2] == b'\x78\x01' or tile2[:2] == b'\x78\xda':
                 tile2_decompressed_zlib = zlib.decompress(tile2)
                 return gzip.compress(tile2_decompressed_zlib)     
-        
+            else: return  gzip.compress(tile2) 
     except Exception as e:
         return None
 
@@ -132,7 +131,7 @@ def merge_metadata(metadata_dicts):
     for metadata in metadata_dicts:
         for name, value in metadata.items():
             if name in merged_metadata:
-                if name.endswith('json'):  # Check if the metadata name suggests JSON content
+                if name.strip() =='json':  # Check if the metadata name suggests JSON content
                     merged_metadata[name] = merge_json_metadata(merged_metadata[name], value)
                 else:
                     # if merged_metadata[name] != value:
@@ -142,56 +141,68 @@ def merge_metadata(metadata_dicts):
     return merged_metadata
 
 def get_min_zoom(zoom_list):
-    numbers_str = zoom_list.split(';')
-    # Step 2: Convert the number strings to integers or floats
-    numbers = [int(num.strip()) for num in numbers_str]
-    # Step 3: Find the minimum value
-    min_zoom = min(numbers)
-    return str(min_zoom)
-
+    try:
+        numbers_str = zoom_list.split(';')
+        # Convert the number strings to integers or floats
+        numbers = [int(num.strip()) for num in numbers_str]
+        # Find the minimum value
+        min_zoom = min(numbers)
+        return str(min_zoom)
+    except Exception as e:
+        logging.error(f"Get min zoom error: {e}")
+        return zoom_list
+    
 def get_max_zoom(zoom_list):
-    numbers_str = zoom_list.split(';')
-    # Step 2: Convert the number strings to integers or floats
-    numbers = [int(num.strip()) for num in numbers_str]
-    # Step 3: Find the minimum value
-    max_zoom = max(numbers)
-    return str(max_zoom)
-
+    try:
+        numbers_str = zoom_list.split(';')
+        # Convert the number strings to integers or floats
+        numbers = [int(num.strip()) for num in numbers_str]
+        # Find the minimum value
+        max_zoom = max(numbers)
+        return str(max_zoom)
+    except Exception as e:
+        logging.error(f"Get max zoom error: {e}")
+        return zoom_list
+    
 def get_max_bounds(bounds_str):
-    # Split the string by ';' to get individual bounding boxes
-    boxes = bounds_str.split(';')
+    try:
+        # Split the string by ';' to get individual bounding boxes
+        boxes = bounds_str.split(';')        
+        # # Initialize variables to store the max bounds
+        for box in boxes:
+            # Strip any extra spaces and split the coordinates
+            coords = [float(coord.strip()) for coord in box.strip().split(',')]
+            if len(coords) == 4:
+                lon1, lat1, lon2, lat2 = coords
+                # Update max bounds
+                min_lon = min(lon1, lon2)
+                min_lat = min(lat1, lat2)
+                max_lon = max(lon1, lon2)
+                max_lat = max(lat1, lat2)
+        
+        # Return the maximum bounds as a string
+        return f"{min_lon},{min_lat},{max_lon},{max_lat}"
+    except Exception as e:
+        logging.error(f"Get max bound error: {e}")
+        return bounds_str
     
-    # Initialize variables to store the max bounds
-    min_lon, min_lat = float('inf'), float('inf')
-    max_lon, max_lat = float('-inf'), float('-inf')
-    
-    for box in boxes:
-        # Strip any extra spaces and split the coordinates
-        coords = [float(coord.strip()) for coord in box.strip().split(',')]
+def get_center_of_bound(bounds_str):
+    try:
+        # Split the string into individual coordinates
+        coords = [float(coord) for coord in bounds_str.split(',')]
         if len(coords) == 4:
             lon1, lat1, lon2, lat2 = coords
-            # Update the max bounds
-            min_lon = min(min_lon, lon1, lon2)
-            min_lat = min(min_lat, lat1, lat2)
-            max_lon = max(max_lon, lon1, lon2)
-            max_lat = max(max_lat, lat1, lat2)
-    
-    # Return the maximum bounds as a string
-    return f"{min_lon},{min_lat},{max_lon},{max_lat}"
-
-def get_center_of_bound(bounds_str):
-    # Split the string into individual coordinates
-    coords = [float(coord) for coord in bounds_str.split(',')]
-    if len(coords) == 4:
-        lon1, lat1, lon2, lat2 = coords
-        # Calculate the center of the bounding box
-        center_lon = (lon1 + lon2) / 2
-        center_lat = (lat1 + lat2) / 2
-        # Return the center as a formatted string
-        return f"{center_lon},{center_lat}"
-    else:
-        raise ValueError("Invalid bounds string format")
-
+            # Calculate the center of the bounding box
+            center_lon = (lon1 + lon2) / 2
+            center_lat = (lat1 + lat2) / 2
+            # Return the center as a formatted string
+            return f"{center_lon},{center_lat}"
+        else:
+            raise ValueError("Invalid bounds string format")
+    except Exception as e:
+        logging.error(f"Get center of bound error: {e}")
+        return ''
+        
 def merge_mbtiles(mbtiles_files, output_mbtiles):
     notexisted_files = [file for file in mbtiles_files if not os.path.exists(file)]
 
@@ -253,82 +264,93 @@ def merge_mbtiles(mbtiles_files, output_mbtiles):
 
         for key, tile in tqdm(tiles.items(), desc="Inserting merged tiles"):
             cur_out.execute('INSERT OR REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)', (key[0], key[1], key[2], tile))
+        conn_out.commit()
+        print(f"Successfully merged MBTiles files into {output_mbtiles}")
     except Exception as e:
-            logging.error(f"Error Merging tile_data {mbtiles_name}: {e}")
+        logging.error(f"Error Merging tile_data {mbtiles_name}: {e}")
     
+    try: 
         # Merging metadata
-    metadata_dicts = []
-    for i, cursor in enumerate(cursors_in):
-        try:
-            # if i == 0:
-            #     continue  # Skip the cursor for the first MBTiles file           
+        metadata_dicts = []
+        for i, cursor in enumerate(cursors_in):
             mbtiles_name = os.path.basename(mbtiles_files[i])  
             cursor.execute('SELECT name, value FROM metadata')
             metadata_dicts.append({name: value for name, value in cursor.fetchall()})
-        except Exception as e:
-            logging.error(f"Error Merging metadata {mbtiles_name}: {e}")
 
-    merged_metadata = merge_metadata(metadata_dicts)
+        merged_metadata = merge_metadata(metadata_dicts)
 
-    for name, value in tqdm(merged_metadata.items(), desc=f"Inserting merged metadata"):
-        cur_out.execute('INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)', (name, value))
+        for name, value in tqdm(merged_metadata.items(), desc=f"Inserting merged metadata"):
+            cur_out.execute('INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)', (name, value))
 
-    # Update formate
-    cur_out.execute(''' UPDATE metadata SET value = 'pbf' where name = 'format' ''')
-    
-    # Update minzoom
-    cur_out.execute("SELECT value FROM metadata WHERE name = 'minzoom'")
-    zoom_levels = cur_out.fetchone()[0]  # Fetch the value
-    if zoom_levels:
-        min_zoom = get_min_zoom(zoom_levels)
+        # Update format
+        cur_out.execute(''' UPDATE metadata SET value = 'pbf' where name = 'format' ''')
+        
+        # Update minzoom
+        cur_out.execute("SELECT value FROM metadata WHERE name = 'minzoom'")
+        zoom_levels = cur_out.fetchone()[0]  # Fetch the value
+        if zoom_levels:
+            min_zoom = get_min_zoom(zoom_levels)
+            cur_out.execute('''
+                UPDATE metadata 
+                SET value = ? 
+                WHERE name = 'minzoom'
+            ''', (min_zoom,))
+
+        # Update maxzoom
+        cur_out.execute("SELECT value FROM metadata WHERE name = 'maxzoom'")
+        zoom_levels = cur_out.fetchone()[0]  # Fetch the value
+
+        max_zoom = 0
+        if zoom_levels:
+            max_zoom = get_max_zoom(zoom_levels)
+            cur_out.execute('''
+                UPDATE metadata 
+                SET value = ? 
+                WHERE name = 'maxzoom'
+            ''', (max_zoom,))
+        
+        # Update max bounds
+        cur_out.execute("SELECT value FROM metadata WHERE name = 'bounds'")
+        bounds = cur_out.fetchone()[0]  # Fetch the value
+        max_bounds = get_max_bounds(bounds)
+
         cur_out.execute('''
             UPDATE metadata 
             SET value = ? 
-            WHERE name = 'minzoom'
-        ''', (min_zoom,))
+            WHERE name = 'bounds'
+            ''', (max_bounds,))
 
-    # Update maxzoom
-    cur_out.execute("SELECT value FROM metadata WHERE name = 'maxzoom'")
-    zoom_levels = cur_out.fetchone()[0]  # Fetch the value
+        # Update center
+        cur_out.execute("SELECT value FROM metadata WHERE name = 'bounds'")
+        bound = cur_out.fetchone()[0]  
+        center = get_center_of_bound(bound)
+        center_of_bound = ''
+        if center != '':
+            center_of_bound = center +f',{max_zoom}'
 
-    max_zoom = 0
-    if zoom_levels:
-        max_zoom = get_max_zoom(zoom_levels)
         cur_out.execute('''
             UPDATE metadata 
             SET value = ? 
-            WHERE name = 'maxzoom'
-        ''', (max_zoom,))
-    
+            WHERE name = 'center'
+            ''', (center_of_bound,))
 
-    # Update max bounds
-    cur_out.execute("SELECT value FROM metadata WHERE name = 'bounds'")
-    bounds = cur_out.fetchone()[0]  # Fetch the value
-    max_bounds = get_max_bounds(bounds)
+        # Update description
+        description = 'Merge multiple MBTiles files into a single MBTiles file using mbtilesmerge from tiles_util'
+        cur_out.execute('''
+            INSERT OR REPLACE INTO metadata (name, value)
+            VALUES ('description', ?)
+        ''', (description,))
+       
+        conn_out.commit()
+        print(f"Successfully merged metadata into {output_mbtiles}")
+        
+    except Exception as e:
+        logging.error(f"Error Merging tile_data: {e}")
 
-    cur_out.execute('''
-        UPDATE metadata 
-        SET value = ? 
-        WHERE name = 'bounds'
-        ''', (max_bounds,))
-
-    # Update center
-    cur_out.execute("SELECT value FROM metadata WHERE name = 'bounds'")
-    bound = cur_out.fetchone()[0]  # Fetch the value
-    center_of_bound = get_center_of_bound(bound) +f',{max_zoom}'
-
-    cur_out.execute('''
-        UPDATE metadata 
-        SET value = ? 
-        WHERE name = 'center'
-        ''', (center_of_bound,))
-
-
-    for conn in connections:
-        conn.close()
-    
-    conn_out.commit()
-    conn_out.close()
+    finally:
+        for conn in connections:
+            conn.close()   
+        conn_out.close()
 
 
 

@@ -84,7 +84,7 @@ def count_tiles(input_filename):
     return num_tiles
 
 # list all vector layers
-def read_vector_layers(input_filename):    
+def read_vector_layers_old(input_filename):    
     connection = sqlite3.connect(input_filename)
     cursor = connection.cursor()
     cursor.execute("SELECT name, value FROM metadata where name = 'json'")
@@ -106,12 +106,75 @@ def read_vector_layers(input_filename):
             print("No 'vector_layers' found in metadata.")
     else:
         return
-    # Write metadata to JSON content
-    # metadata_json_path = os.path.join(os.path.dirname(input_filename), "tiles.json")
-    # with open(metadata_json_path, "w") as metadata_file:
-    #     json.dump(layers_json, metadata_file, indent=4)
-    # print ("Writing tiles.json done!")
 
+def read_vector_layers(input_filename):    
+    connection = sqlite3.connect(input_filename)
+    cursor = connection.cursor()
+    
+    # Fetch the JSON from the metadata
+    cursor.execute("SELECT value FROM metadata WHERE name = 'json'")
+    row = cursor.fetchone()
+    
+    if row is not None:
+        json_content = row[0]
+        layers_json = json.loads(json_content)
+        
+        # Print vector layers information
+        if "vector_layers" in layers_json:
+            vector_layers = layers_json["vector_layers"]
+            print("######:")
+            print("Vector layers:")
+            for index, layer in enumerate(vector_layers):
+                row_index = index + 1
+                layer_id = layer["id"]
+                description = layer.get("description", "")
+                minzoom = layer.get("minzoom", "")
+                maxzoom = layer.get("maxzoom", "")
+                fields = layer.get("fields", {})
+                
+                print(f"{row_index}: {layer_id}")
+                print(f"  Description: {description}")
+                print(f"  Min Zoom: {minzoom}")
+                print(f"  Max Zoom: {maxzoom}")
+                print(f"  Fields: {fields}")
+                print(" ")
+        
+        # Print tilestats information
+        if "tilestats" in layers_json:
+            tilestats = layers_json["tilestats"]
+            print("######:")
+            print("Tile Stats:")
+            layer_count = tilestats.get("layerCount", 0)
+            print(f"  Layer Count: {layer_count}")
+            
+            if "layers" in tilestats:
+                for index, layer in enumerate(tilestats["layers"]):
+                    row_index = index + 1
+                    layer_name = layer.get("layer", "")
+                    count = layer.get("count", "")
+                    geometry = layer.get("geometry", "")
+                    attribute_count = layer.get("attributeCount", 0)
+                    
+                    print(f"{row_index}: {layer_name}")
+                    print(f"  Count: {count}")
+                    print(f"  Geometry: {geometry}")
+                    print(f"  Attribute Count: {attribute_count}")
+                    
+                    if "attributes" in layer:
+                        for attr_index, attribute in enumerate(layer["attributes"]):
+                            attr_name = attribute.get("attribute", "")
+                            attr_count = attribute.get("count", 0)
+                            attr_type = attribute.get("type", "")
+                            attr_values = attribute.get("values", [])
+                            
+                            print(f"    Attribute {attr_index + 1}: {attr_name}")
+                            print(f"      Count: {attr_count}")
+                            print(f"      Type: {attr_type}")
+                            print(f"      Values: {attr_values}")
+                            print(" ")            
+    connection.close()
+
+   
 def main():
     if len(sys.argv) != 2:
       print("Please provide the mbtiles input filename.")

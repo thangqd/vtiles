@@ -38,7 +38,6 @@ setup(
             'mbtiles2s3 = tiles_util.mbtiles.mbtiles2s3:main',     
             'mbtiles2geojson = tiles_util.mbtiles.mbtiles2geojson:main',
             'mbtiles2pbf = tiles_util.mbtiles.mbtiles2pbf:main',
-            'mbtilesdel = tiles_util.mbtiles.mbtilesdel:main',
             'mbtilessplit = tiles_util.mbtiles.mbtilessplit:main',
             'mbtilesmerge = tiles_util.mbtiles.mbtilesmerge:main',
             'mbtilesdecompress = tiles_util.mbtiles.mbtilesdecompress:main',
