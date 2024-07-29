@@ -3,16 +3,13 @@ import os, sys, datetime
 
 # Check if mbtiles is vector or raster
 def check_vector(input_filename):    
-    try: 
-        connection = sqlite3.connect(input_filename)
-        cursor = connection.cursor()
-        cursor.execute("SELECT value FROM metadata WHERE name='format'")
-        format_info = cursor.fetchone()
-        # Close the database connection
-        cursor.close()
-        connection.close()
-    except:
-        return -2
+    connection = sqlite3.connect(input_filename)
+    cursor = connection.cursor()
+    cursor.execute("SELECT value FROM metadata WHERE name='format'")
+    format_info = cursor.fetchone()
+    # Close the database connection
+    cursor.close()
+    connection.close()    
 
     # Check if format_info is not None
     if format_info:
@@ -133,45 +130,45 @@ def read_vector_layers(input_filename):
                 fields = layer.get("fields", {})
                 
                 print(f"{row_index}: {layer_id}")
-                print(f"  Description: {description}")
-                print(f"  Min Zoom: {minzoom}")
-                print(f"  Max Zoom: {maxzoom}")
-                print(f"  Fields: {fields}")
-                print(" ")
+                # print(f"  Description: {description}")
+                # print(f"  Min Zoom: {minzoom}")
+                # print(f"  Max Zoom: {maxzoom}")
+                # print(f"  Fields: {fields}")
+                # print(" ")
         
         # Print tilestats information
-        if "tilestats" in layers_json:
-            tilestats = layers_json["tilestats"]
-            print("######:")
-            print("Tile Stats:")
-            layer_count = tilestats.get("layerCount", 0)
-            print(f"  Layer Count: {layer_count}")
+        # if "tilestats" in layers_json:
+        #     tilestats = layers_json["tilestats"]
+        #     print("######:")
+        #     print("Tile Stats:")
+        #     layer_count = tilestats.get("layerCount", 0)
+        #     print(f"  Layer Count: {layer_count}")
             
-            if "layers" in tilestats:
-                for index, layer in enumerate(tilestats["layers"]):
-                    row_index = index + 1
-                    layer_name = layer.get("layer", "")
-                    count = layer.get("count", "")
-                    geometry = layer.get("geometry", "")
-                    attribute_count = layer.get("attributeCount", 0)
+        #     if "layers" in tilestats:
+        #         for index, layer in enumerate(tilestats["layers"]):
+        #             row_index = index + 1
+        #             layer_name = layer.get("layer", "")
+        #             count = layer.get("count", "")
+        #             geometry = layer.get("geometry", "")
+        #             attribute_count = layer.get("attributeCount", 0)
                     
-                    print(f"{row_index}: {layer_name}")
-                    print(f"  Count: {count}")
-                    print(f"  Geometry: {geometry}")
-                    print(f"  Attribute Count: {attribute_count}")
+        #             print(f"{row_index}: {layer_name}")
+        #             print(f"  Count: {count}")
+        #             print(f"  Geometry: {geometry}")
+        #             print(f"  Attribute Count: {attribute_count}")
                     
-                    if "attributes" in layer:
-                        for attr_index, attribute in enumerate(layer["attributes"]):
-                            attr_name = attribute.get("attribute", "")
-                            attr_count = attribute.get("count", 0)
-                            attr_type = attribute.get("type", "")
-                            attr_values = attribute.get("values", [])
+        #             if "attributes" in layer:
+        #                 for attr_index, attribute in enumerate(layer["attributes"]):
+        #                     attr_name = attribute.get("attribute", "")
+        #                     attr_count = attribute.get("count", 0)
+        #                     attr_type = attribute.get("type", "")
+        #                     attr_values = attribute.get("values", [])
                             
-                            print(f"    Attribute {attr_index + 1}: {attr_name}")
-                            print(f"      Count: {attr_count}")
-                            print(f"      Type: {attr_type}")
-                            print(f"      Values: {attr_values}")
-                            print(" ")            
+        #                     print(f"    Attribute {attr_index + 1}: {attr_name}")
+        #                     print(f"      Count: {attr_count}")
+        #                     print(f"      Type: {attr_type}")
+        #                     print(f"      Values: {attr_values}")
+        #                     print(" ")            
     connection.close()
 
    
@@ -202,16 +199,13 @@ def main():
             print(f"Total number of tiles: {num_tiles}")
             read_vector_layers(input_filename)
         
-        elif check_vector(input_filename) == 0: # raster
+        else:
             metadata = read_raster_metadata(input_filename)
             num_tiles = count_tiles(input_filename)
             print("###### Metadata:")
             for key, value in metadata.items():
                 print(f"{key}: {value}")
             print(f"Total number of tiles: {num_tiles}")
-        elif check_vector(input_filename) == -1: # Undefined
-            print ('Cannot detect format type in Metadata')
-        else: print ('No metadata found!')
     else: 
         print ('MBTiles file does not exist!. Please recheck and input a correct file path.')
         return

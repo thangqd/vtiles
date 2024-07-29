@@ -55,7 +55,7 @@ def main():
     print(f"File size: {file_size} bytes")
     print(f"Last modified: {last_modified_date}")
     print(f"Compression type: {compression_type}")
-
+    print (f"Decoded tile: {tile_data}")
     # Print layer information
     for layer_name, layer_data in tile_data.items():
         num_features = len(layer_data['features'])

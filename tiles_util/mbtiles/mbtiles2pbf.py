@@ -32,8 +32,8 @@ def extract_tile_to_pbf(mbtiles_file, z, x, y, output_pbf):
             print("Tile not found in MBTiles file")
     except sqlite3.Error as e:
         print(f"Failed to read MBTiles file: {e}")
-    except (OSError, zlib.error, gzip.BadGzipFile) as e:
-        print(f"Failed to decompress tile data: {e}")
+    # except (OSError, zlib.error, gzip.BadGzipFile) as e:
+    #     print(f"Failed to decompress tile data: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description='Extract a tile from MBTiles to PBF.')

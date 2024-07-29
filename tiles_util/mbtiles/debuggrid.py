@@ -1,108 +1,106 @@
-import mercantile
-from shapely.geometry import Polygon, shape, mapping
-from shapely.affinity import affine_transform
-import sqlite3
 import argparse
+import os
+import math
+import mercantile
 from tiles_util.utils.mapbox_vector_tile import encode
+from shapely.geometry import box, mapping
+import sqlite3
 import gzip
+from pyproj import Transformer
+from tqdm import tqdm
 
-def tile_to_polygon(tile):
-    bbox = mercantile.bounds(tile)
-    return Polygon([
-        (bbox.west, bbox.south),
-        (bbox.west, bbox.north),
-        (bbox.east, bbox.north),
-        (bbox.east, bbox.south),
-        (bbox.west, bbox.south),
-    ])
+# Web Mercator bounds for the entire world
+WEB_MERCATOR_BOUNDS = (-20037508.342789244, -20037508.342789244, 20037508.342789244, 20037508.342789244)
 
-def transform_geometry(geometry, tile_bounds, extent=4096):
-    minx, miny, maxx, maxy = tile_bounds
-    x_factor = extent / (maxx - minx)
-    y_factor = extent / (maxy - miny)
-    transform = [x_factor, 0, 0, y_factor, -minx * x_factor, -miny * y_factor]
-    return affine_transform(geometry, transform)
+# Define the Web Mercator projection (EPSG:3857)
+transformer = Transformer.from_crs("epsg:4326", "epsg:3857", always_xy=True)
 
-def generate_debug_grid_mbtiles(zoom_level, output_file):
-    conn = sqlite3.connect(output_file)
+def mercator_to_4096(x, y, bounds, zoom):
+    min_x, min_y, max_x, max_y = bounds
+    scale = 2 ** zoom
+    x_extent = (x - min_x) / (max_x - min_x) * 4096 * scale
+    y_extent = (max_y - y) / (max_y - min_y) * 4096 * scale
+    return x_extent, y_extent
+
+def bbox_to_4096(bbox, zoom):
+    west, south = transformer.transform(bbox.west, bbox.south)
+    east, north = transformer.transform(bbox.east, bbox.north)
+    west_4096, south_4096 = mercator_to_4096(west, south, WEB_MERCATOR_BOUNDS, zoom)
+    east_4096, north_4096 = mercator_to_4096(east, north, WEB_MERCATOR_BOUNDS, zoom)
+    return box(0, 0, 4096, 4096)
+
+def create_tile(z, x, y):
+    bbox = mercantile.bounds(x, y, z)
+    tile_geometry = bbox_to_4096(bbox, z)
+    properties = {
+        'z': z,
+        'x': x,
+        'y': y,
+        'id': f'{z}_{x}_{y}',
+        'name': f'{z}/{x}/{y}'
+    }
+
+    feature = {
+        'geometry': mapping(tile_geometry),
+        'properties': properties
+    }
+
+    tile_data = {
+        'name': 'debug_grid',
+        'features': [feature]
+    }
+
+    tile_data_encoded = encode(tile_data)
+    tile_data_encoded_gzipped = gzip.compress(tile_data_encoded)
+    return tile_data_encoded_gzipped
+
+def create_mbtiles(tiles, output_mbtiles, max_zoom):
+    if os.path.exists(output_mbtiles):
+        os.remove(output_mbtiles)
+
+    conn = sqlite3.connect(output_mbtiles)
     cursor = conn.cursor()
 
-    cursor.executescript("""
-    CREATE TABLE metadata (name TEXT, value TEXT);
-    CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);
-    CREATE UNIQUE INDEX name ON metadata (name);
-    CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row);
-    """)
+    cursor.execute('''CREATE TABLE metadata (name TEXT, value TEXT);''')
+    cursor.execute('''CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);''')
 
-    metadata = [
-        ("name", "Debug Grid"),
-        ("type", "overlay"),
-        ("version", "1.0"),
-        ("description", "Debug grid for visualizing tile boundaries."),
-        ("format", "pbf"),
-        # ("bounds", "-180.0,-85.0511,180.0,85.0511"),
-        ("minzoom", '0'),
-        ("maxzoom", str(zoom_level))
-    ]
-    cursor.executemany("INSERT INTO metadata (name, value) VALUES (?, ?)", metadata)
+    cursor.execute("INSERT INTO metadata (name, value) VALUES ('name', 'Debug Grid');")
+    cursor.execute("INSERT INTO metadata (name, value) VALUES ('description', 'A debug grid for XYZ tiles using tiles_util.debuggrid');")
+    cursor.execute("INSERT INTO metadata (name, value) VALUES ('type', 'overlay');")
+    cursor.execute("INSERT INTO metadata (name, value) VALUES ('version', '1');")
+    cursor.execute("INSERT INTO metadata (name, value) VALUES ('format', 'pbf');")
+    cursor.execute("INSERT INTO metadata (name, value) VALUES ('minzoom', '0');")
+    cursor.execute(f"INSERT INTO metadata (name, value) VALUES ('maxzoom', '{max_zoom}');")
+    cursor.execute("INSERT INTO metadata (name, value) VALUES ('bounds', '-180.000000,-85.051129,180.000000,85.051129');")
 
-    world_bounds = (-180.0, -85.0511, 180.0, 85.0511)
-    for tile in mercantile.tiles(world_bounds[0], world_bounds[1], world_bounds[2], world_bounds[3], zoom_level):
-        polygon = tile_to_polygon(tile)
-        feature = {
-            "type": "Feature",
-            "geometry": mapping(polygon),
-            "properties": {
-                "tile_id": f"{tile.z}/{tile.x}/{tile.y}",
-                "z": tile.z,
-                "x": tile.x,
-                "y": tile.y
-            }
-        }
-        feature_collection = {
-            "type": "FeatureCollection",
-            "features": [feature]
-        }
-
-        tile_bounds = mercantile.bounds(tile)
-        mvt_features = []
-        for feature in feature_collection["features"]:
-            geometry = transform_geometry(shape(feature["geometry"]), (tile_bounds.west, tile_bounds.south, tile_bounds.east, tile_bounds.north))
-            mvt_features.append({
-                "geometry": geometry,
-                "properties": feature["properties"]
-            })
-
-        mvt_layer = {
-            "name": "debug_grid",
-            "features": mvt_features
-        }
-
-        # print(mvt_layer)
-        aaa = [{"name": "water", "features": [{"geometry": "POLYGON((3257.6188764017343 1924.195788997867, 3257.4962116230354 1924.0964889389206, 3257.7263541125944 1924.032235959602, 3257.8957483307977 1924.2682196290993, 3257.65509171735 1924.2623784491611, 3257.65509171735 1924.2623784491611, 3257.6188764017343 1924.195788997867))", "properties": {"name": "1"}}]}]
-        tile_data_encoded = encode(aaa)
-        print(tile_data_encoded)
-        tile_data_encoded_gzipped = gzip.compress(tile_data_encoded)
-        tile_column = tile.x
-        tile_row = tile.y
-        # tile_row = (1 << zoom_level) - 1 - tile.y
-
-        cursor.execute(
-            "INSERT INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)",
-            (zoom_level, tile_column, tile_row, tile_data_encoded_gzipped)
-        )
+    for tile in tqdm(tiles, desc="Creating tiles"):
+        z, x, y = tile.z, tile.x, tile.y
+        tile_data = create_tile(z, x, y)
+        tms_y = (2 ** z - 1) - y
+        cursor.execute('INSERT INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?);', 
+                       (z, x, tms_y, tile_data))
 
     conn.commit()
     conn.close()
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate a debug grid MBTiles file.")
-    parser.add_argument("-z", "--zoom", type=int, required=True, help="Zoom level for the debug grid.")
-    parser.add_argument("-o", "--output", type=str, required=True, help="Output MBTiles file.")
-
+    parser = argparse.ArgumentParser(description='Create a debug grid representing the XYZ vector tile scheme as an MBTiles file.')
+    parser.add_argument('-o', '--output', required=True, help='Output MBTiles file')
+    parser.add_argument('-z', '--zoom', type=int, required=True, help='Maximum zoom level')
     args = parser.parse_args()
 
-    generate_debug_grid_mbtiles(args.zoom, args.output)
+    min_latitude = -85.05112878
+    max_latitude = 85.05112878
+    min_longitude = -180.0
+    max_longitude = 180.0
 
-if __name__ == "__main__":
+    all_tiles = []
+
+    for zoom_level in range(0, args.zoom + 1):
+        tiles = list(mercantile.tiles(min_longitude, min_latitude, max_longitude, max_latitude, zoom_level))
+        all_tiles.extend(tiles)
+
+    create_mbtiles(all_tiles, args.output, args.zoom)
+
+if __name__ == '__main__':
     main()

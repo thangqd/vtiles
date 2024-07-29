@@ -11,12 +11,12 @@ from urllib.request import urlopen
 
 def tile_data_to_geojson(tile_data, x, y, z, output):
     try:
-        features = vt_bytes_to_geojson(tile_data, x, y, z)
+        features = vt_bytes_to_geojson(tile_data, x,y,z)
         with open(output, 'w') as f:
             json.dump(features, f, indent=2)
         print(f"GeoJSON data has been saved to {output}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"Error saving pbf to geojson: {e}")
 
 
 def main():
@@ -57,7 +57,7 @@ def main():
                     WHERE zoom_level=? 
                     AND tile_column=? 
                     AND tile_row=?''',                    
-                    (z, x, (y)))
+                    (z, x, y))
                 row = cursor.fetchone()
                 conn.close()
                 if row:
@@ -86,7 +86,7 @@ def main():
         except Exception as e:
             logging.error(f"Failed to decompress gzip data: {e}")
             return None        
-        tile_data_to_geojson(tile_data, z,x,y,args.output)
+        tile_data_to_geojson(tile_data, x,y,z,args.output)
 
 if __name__ == '__main__':
     main()
