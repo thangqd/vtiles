@@ -10,8 +10,7 @@ requirements = [
     'click~=8.1.7',
     'fiona~=1.9.4',
     'shapely~=2.0.1',
-    'osmium~=3.7.0',
-    'mercantile~=1.2.1'
+    'osmium~=3.7.0'
 ]
 
 setup(
