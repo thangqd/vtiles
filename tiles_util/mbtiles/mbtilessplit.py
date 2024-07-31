@@ -66,7 +66,7 @@ def process_mbtiles(input_mbtiles, output_mbtiles, layers_to_keep, keep_layers=T
                 tile_data BLOB
             )
         """)
-        cursor.execute("CREATE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row)")
+        cursor.execute("CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row)")
         
         try:
             with sqlite3.connect(input_mbtiles) as in_conn:

@@ -164,28 +164,31 @@ def get_max_zoom(zoom_list):
         logging.error(f"Get max zoom error: {e}")
         return zoom_list
     
-def get_max_bounds(bounds_str):
+def get_max_bound(bounds_str):
     try:
-        # Split the string by ';' to get individual bounding boxes
-        boxes = bounds_str.split(';')        
-        # # Initialize variables to store the max bounds
-        for box in boxes:
-            # Strip any extra spaces and split the coordinates
-            coords = [float(coord.strip()) for coord in box.strip().split(',')]
-            if len(coords) == 4:
-                lon1, lat1, lon2, lat2 = coords
-                # Update max bounds
-                min_lon = min(lon1, lon2)
-                min_lat = min(lat1, lat2)
-                max_lon = max(lon1, lon2)
-                max_lat = max(lat1, lat2)
-        
-        # Return the maximum bounds as a string
-        return f"{min_lon},{min_lat},{max_lon},{max_lat}"
+         # Initialize min and max values with None
+        min_lon, min_lat, max_lon, max_lat = None, None, None, None        
+        bounds_items = bounds_str.split(';')       
+        # Initialize variables to store the min bound
+        for item in bounds_items:
+            # Extract coordinates from each bound
+            coords = list(map(float, item.split(',')))
+            if min_lon is None:
+                # Initialize min and max with the first bounding box
+                min_lon, min_lat, max_lon, max_lat = coords
+            else:
+                # Update min and max values
+                min_lon = min(min_lon, coords[0])
+                min_lat = min(min_lat, coords[1])
+                max_lon = max(max_lon, coords[2])
+                max_lat = max(max_lat, coords[3])
+        # Return the max bound as a string
+        max_bound = f"{min_lon},{min_lat},{max_lon},{max_lat}"
+        return max_bound
     except Exception as e:
         logging.error(f"Get max bound error: {e}")
-        return bounds_str
-    
+        return '-180.000000,-85.051129,180.000000,85.051129'
+
 def get_center_of_bound(bounds_str):
     try:
         # Split the string into individual coordinates
@@ -219,7 +222,6 @@ def merge_mbtiles(mbtiles_files, output_mbtiles):
     try:
         conn_out = sqlite3.connect(output_mbtiles)       
         cur_out = conn_out.cursor()
-
         cur_out.execute('CREATE TABLE IF NOT EXISTS metadata (name TEXT, value TEXT)')
         cur_out.execute('DROP TABLE IF EXISTS tiles_new;')
         cur_out.execute('CREATE TABLE tiles_new (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB, PRIMARY KEY (zoom_level, tile_column, tile_row))')
@@ -236,8 +238,8 @@ def merge_mbtiles(mbtiles_files, output_mbtiles):
             elif result[0] == 'table':
                 cur_out.execute('DROP TABLE tiles')
         cur_out.execute('ALTER TABLE tiles_new RENAME TO tiles')
-        cur_out.execute('CREATE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row)')
-    
+        cur_out.execute('CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row)')
+        
         # Merging tiles   
         cur_out.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles ORDER BY zoom_level')          
         output_rows = cur_out.fetchall()
@@ -255,7 +257,7 @@ def merge_mbtiles(mbtiles_files, output_mbtiles):
             mbtiles_name = os.path.basename(mbtiles_files[i])
             cursor.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles ORDER BY zoom_level')
             rows = cursor.fetchall()
-            for (z, x, y, tile) in tqdm(rows, desc=f"Merging tiles from {mbtiles_name}"):
+            for (z, x, y, tile) in tqdm(rows, desc=f"Processing tiles from {mbtiles_name}"):
                 key = (z, x, y)
                 if key in tiles:
                     tiles[key] = merge_tiles(tiles[key], tile, z, x, y)
@@ -312,13 +314,14 @@ def merge_mbtiles(mbtiles_files, output_mbtiles):
         # Update max bounds
         cur_out.execute("SELECT value FROM metadata WHERE name = 'bounds'")
         bounds = cur_out.fetchone()[0]  # Fetch the value
-        max_bounds = get_max_bounds(bounds)
+        if bounds:
+            min_bound = get_max_bound(bounds)
 
-        cur_out.execute('''
-            UPDATE metadata 
-            SET value = ? 
-            WHERE name = 'bounds'
-            ''', (max_bounds,))
+            cur_out.execute('''
+                UPDATE metadata 
+                SET value = ? 
+                WHERE name = 'bounds'
+                ''', (min_bound,))
 
         # Update center
         cur_out.execute("SELECT value FROM metadata WHERE name = 'bounds'")
@@ -345,7 +348,7 @@ def merge_mbtiles(mbtiles_files, output_mbtiles):
         print(f"Successfully merged metadata into {output_mbtiles}")
         
     except Exception as e:
-        logging.error(f"Error Merging tile_data: {e}")
+        logging.error(f"Error Merging metadata: {e}")
 
     finally:
         for conn in connections:

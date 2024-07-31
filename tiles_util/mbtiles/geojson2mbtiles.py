@@ -1,7 +1,7 @@
 import json
 import argparse
 from tiles_util.utils.mapbox_vector_tile import encode
-import mercantile
+import tiles_util.utils.mercantile as mercantile
 import sqlite3
 from shapely.geometry import shape, mapping
 from shapely.ops import transform
@@ -11,10 +11,11 @@ import gzip
 
 def create_mbtiles(db_path):
     conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    c.execute('CREATE TABLE metadata (name TEXT, value TEXT);')
-    c.execute('CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);')
-    c.execute('CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row);')
+    cursor = conn.cursor()
+    cursor.execute('CREATE TABLE metadata (name TEXT, value TEXT);')
+    cursor.execute('CREATE UNIQUE INDEX name on metadata (name);')
+    cursor.execute('CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);')
+    cursor.execute('CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row);')
     conn.commit()
     conn.close()
 

@@ -75,7 +75,7 @@ def main():
                     tile_data = f.read()
             except IOError as e:
                 logging.error(f"Failed to read file {url_or_path}: {e}")
-                return None
+
     # Decompress tile_data
     if tile_data:
         try:
@@ -85,7 +85,7 @@ def main():
                 tile_data = zlib.decompress(tile_data) 
         except Exception as e:
             logging.error(f"Failed to decompress gzip data: {e}")
-            return None        
+
         tile_data_to_geojson(tile_data, x,y,z,args.output)
 
 if __name__ == '__main__':

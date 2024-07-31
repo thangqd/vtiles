@@ -53,7 +53,7 @@ def decompress_mbtiles(input_mbtiles, output_mbtiles):
         # Drop the view and rename the new table to tiles
         cursor.execute("DROP VIEW tiles")
         cursor.execute("ALTER TABLE tiles_new RENAME TO tiles")
-        cursor.execute("CREATE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row)")
+        cursor.execute("CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row)")
     else:
         # Decompress tile data in the existing tiles table
         cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles order by zoom_level")
@@ -70,7 +70,7 @@ def decompress_mbtiles(input_mbtiles, output_mbtiles):
             except Exception as e:
                 print(f"Error decompressing tile {zoom_level}/{tile_column}/{tile_row}: {e}")
         
-        cursor.execute("CREATE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row)")
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row)")
     # Commit and close connections
     conn.commit()
     conn.close()

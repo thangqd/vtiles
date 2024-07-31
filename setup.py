@@ -42,20 +42,22 @@ setup(
             'mbtilesmerge = tiles_util.mbtiles.mbtilesmerge:main',
             'mbtilesdecompress = tiles_util.mbtiles.mbtilesdecompress:main',
             'mbtilescompress = tiles_util.mbtiles.mbtilescompress:main',
+            'mbtilesfixmeta = tiles_util.mbtiles.mbtilesfixmeta:main',
             'geojson2mbtiles = tiles_util.mbtiles.geojson2mbtiles:main',                   
             'folder2mbtiles = tiles_util.mbtiles.folder2mbtiles:main',  
             'pbfinfo = tiles_util.mbtiles.pbfinfo:main',
             'pbf2geojson = tiles_util.mbtiles.pbf2geojson:main',
             'folder2s3 = tiles_util.mbtiles.folder2s3:main',
             'flipy = tiles_util.mbtiles.flipy:main',
-            'debuggrid = tiles_util.mbtiles.debuggrid:main',
-                                  
+                                            
             'servefolder= tiles_util.server.servefolder:main',
             'servepostgis= tiles_util.server.servepostgis:main',          
             'servembtiles=tiles_util.server.servembtiles:main',    
             'servevectormbtiles=tiles_util.server.servevectormbtiles:main',       
             'servepmtiles=tiles_util.server.servepmtiles:main',                   
             
+            'vectortilegrid.py = tiles_util.grid.vectortilegrid:main',
+
             'pmtilesinfo = tiles_util.utils.pmtilesinfo:main',
             'pmtiles2folder = tiles_util.utils.pmtiles2folder:main',
             'pmtiles2mbtiles = tiles_util.utils.pmtiles2mbtiles:main',           

@@ -97,9 +97,14 @@ def pmtiles_to_mbtiles(input, output):
     conn = sqlite3.connect(output)
     cursor = conn.cursor()
     cursor.execute("CREATE TABLE metadata (name text, value text);")
+    cursor.execute("""create unique index name on metadata (name);""")
     cursor.execute(
         "CREATE TABLE tiles (zoom_level integer, tile_column integer, tile_row integer, tile_data blob);"
     )
+    cursor.execute(
+        "CREATE UNIQUE INDEX tile_index on tiles (zoom_level, tile_column, tile_row);"
+    )
+
 
     with open(input, "r+b") as f:
         source = MmapSource(f)
@@ -156,9 +161,6 @@ def pmtiles_to_mbtiles(input, output):
                 (zxy[0], zxy[1], flipped_y, tile_data),
             )
 
-    cursor.execute(
-        "CREATE UNIQUE INDEX tile_index on tiles (zoom_level, tile_column, tile_row);"
-    )
     conn.commit()
     conn.close()
 
