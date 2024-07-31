@@ -8,7 +8,7 @@ import gzip, zlib
 import json
 import logging
 from tqdm import tqdm
-
+from tiles_util.mbtiles import mbtilesfixmeta
 
 logging.basicConfig(level=logging.INFO)
 
@@ -206,8 +206,8 @@ def get_center_of_bound(bounds_str):
         logging.error(f"Get center of bound error: {e}")
         return ''
         
-def merge_mbtiles(mbtiles_files, output_mbtiles):
-    notexisted_files = [file for file in mbtiles_files if not os.path.exists(file)]
+def merge_mbtiles(input_mbtiles, output_mbtiles):
+    notexisted_files = [file for file in input_mbtiles if not os.path.exists(file)]
 
     if notexisted_files:
         print(f"Error: The following input MBTiles files are not existed:")
@@ -217,143 +217,148 @@ def merge_mbtiles(mbtiles_files, output_mbtiles):
 
     if os.path.exists(output_mbtiles):
         os.remove(output_mbtiles)
-    shutil.copyfile(mbtiles_files[0], output_mbtiles)
+    is_vector, compression_type = mbtilesfixmeta.check_vector(input_mbtiles[0]) 
+    if is_vector:
+        mbtilesfixmeta.fix_metadata(input_mbtiles[0], compression_type)   
+        shutil.copyfile(input_mbtiles[0], output_mbtiles)
+        try:
+            conn_out = sqlite3.connect(output_mbtiles)       
+            cur_out = conn_out.cursor()
+            cur_out.execute('CREATE TABLE IF NOT EXISTS metadata (name TEXT, value TEXT)')
+            cur_out.execute('DROP TABLE IF EXISTS tiles_new;')
+            cur_out.execute('CREATE TABLE tiles_new (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB, PRIMARY KEY (zoom_level, tile_column, tile_row))')
+            cur_out.execute('''
+                INSERT INTO tiles_new (zoom_level, tile_column, tile_row, tile_data)
+                SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles;
+                ''')
+            
+            cur_out.execute("SELECT type FROM sqlite_master WHERE name='tiles'")  
+            result = cur_out.fetchone()
+            if result:
+                if result[0] == 'view':
+                    cur_out.execute('DROP VIEW tiles')
+                elif result[0] == 'table':
+                    cur_out.execute('DROP TABLE tiles')
+            cur_out.execute('ALTER TABLE tiles_new RENAME TO tiles')
+            cur_out.execute('CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row)')
+            
+            # Merging tiles   
+            cur_out.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles ORDER BY zoom_level')          
+            output_rows = cur_out.fetchall()
+            tiles = {}
 
-    try:
-        conn_out = sqlite3.connect(output_mbtiles)       
-        cur_out = conn_out.cursor()
-        cur_out.execute('CREATE TABLE IF NOT EXISTS metadata (name TEXT, value TEXT)')
-        cur_out.execute('DROP TABLE IF EXISTS tiles_new;')
-        cur_out.execute('CREATE TABLE tiles_new (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB, PRIMARY KEY (zoom_level, tile_column, tile_row))')
-        cur_out.execute('''
-            INSERT INTO tiles_new (zoom_level, tile_column, tile_row, tile_data)
-            SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles;
-            ''')
-        
-        cur_out.execute("SELECT type FROM sqlite_master WHERE name='tiles'")  
-        result = cur_out.fetchone()
-        if result:
-            if result[0] == 'view':
-                cur_out.execute('DROP VIEW tiles')
-            elif result[0] == 'table':
-                cur_out.execute('DROP TABLE tiles')
-        cur_out.execute('ALTER TABLE tiles_new RENAME TO tiles')
-        cur_out.execute('CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row)')
-        
-        # Merging tiles   
-        cur_out.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles ORDER BY zoom_level')          
-        output_rows = cur_out.fetchall()
-        tiles = {}
-
-        for (z, x, y, tile) in output_rows:
-            key = (z, x, y)
-            tiles[key] = tile
-        
-        connections = [sqlite3.connect(mbtiles) for mbtiles in mbtiles_files]
-        cursors_in = [conn.cursor() for conn in connections]
-        for i, cursor in enumerate(cursors_in):
-            if i == 0:
-                continue  # Skip the cursor for the first MBTiles file     
-            mbtiles_name = os.path.basename(mbtiles_files[i])
-            cursor.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles ORDER BY zoom_level')
-            rows = cursor.fetchall()
-            for (z, x, y, tile) in tqdm(rows, desc=f"Processing tiles from {mbtiles_name}"):
+            for (z, x, y, tile) in output_rows:
                 key = (z, x, y)
-                if key in tiles:
-                    tiles[key] = merge_tiles(tiles[key], tile, z, x, y)
-                else:
-                    tiles[key] = tile
+                tiles[key] = tile
+            
+            connections = [sqlite3.connect(mbtiles) for mbtiles in input_mbtiles]
+            cursors_in = [conn.cursor() for conn in connections]
+            for i, cursor in enumerate(cursors_in):
+                if i == 0:
+                    continue  # Skip the cursor for the first MBTiles file     
+                is_vector, compression_type = mbtilesfixmeta.check_vector(input_mbtiles[0]) 
+                if is_vector:
+                    mbtilesfixmeta.fix_metadata(input_mbtiles[i], compression_type)
+                    mbtiles_name = os.path.basename(input_mbtiles[i])
+                    cursor.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles ORDER BY zoom_level')
+                    rows = cursor.fetchall()
+                    for (z, x, y, tile) in tqdm(rows, desc=f"Processing tiles from {mbtiles_name}"):
+                        key = (z, x, y)
+                        if key in tiles:
+                            tiles[key] = merge_tiles(tiles[key], tile, z, x, y)
+                        else:
+                            tiles[key] = tile
 
-        for key, tile in tqdm(tiles.items(), desc="Inserting merged tiles"):
-            cur_out.execute('INSERT OR REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)', (key[0], key[1], key[2], tile))
-        conn_out.commit()
-        print(f"Successfully merged MBTiles files into {output_mbtiles}")
-    except Exception as e:
-        logging.error(f"Error Merging tile_data {mbtiles_name}: {e}")
-    
-    try: 
-        # Merging metadata
-        metadata_dicts = []
-        for i, cursor in enumerate(cursors_in):
-            mbtiles_name = os.path.basename(mbtiles_files[i])  
-            cursor.execute('SELECT name, value FROM metadata')
-            metadata_dicts.append({name: value for name, value in cursor.fetchall()})
-
-        merged_metadata = merge_metadata(metadata_dicts)
-
-        for name, value in tqdm(merged_metadata.items(), desc=f"Inserting merged metadata"):
-            cur_out.execute('INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)', (name, value))
-
-        # Update format
-        cur_out.execute(''' UPDATE metadata SET value = 'pbf' where name = 'format' ''')
+            for key, tile in tqdm(tiles.items(), desc="Inserting merged tiles"):
+                cur_out.execute('INSERT OR REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)', (key[0], key[1], key[2], tile))
+            conn_out.commit()
+            print(f"Successfully merged MBTiles files into {output_mbtiles}")
+        except Exception as e:
+            logging.error(f"Error Merging tile_data {mbtiles_name}: {e}")
         
-        # Update minzoom
-        cur_out.execute("SELECT value FROM metadata WHERE name = 'minzoom'")
-        zoom_levels = cur_out.fetchone()[0]  # Fetch the value
-        if zoom_levels:
-            min_zoom = get_min_zoom(zoom_levels)
+        try: 
+            # Merging metadata
+            metadata_dicts = []
+            for i, cursor in enumerate(cursors_in):
+                mbtiles_name = os.path.basename(input_mbtiles[i])  
+                cursor.execute('SELECT name, value FROM metadata')
+                metadata_dicts.append({name: value for name, value in cursor.fetchall()})
+
+            merged_metadata = merge_metadata(metadata_dicts)
+
+            for name, value in tqdm(merged_metadata.items(), desc=f"Inserting merged metadata"):
+                cur_out.execute('INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)', (name, value))
+
+            # Update format
+            cur_out.execute(''' UPDATE metadata SET value = 'pbf' where name = 'format' ''')
+            
+            # Update minzoom
+            cur_out.execute("SELECT value FROM metadata WHERE name = 'minzoom'")
+            zoom_levels = cur_out.fetchone()[0]  # Fetch the value
+            if zoom_levels:
+                min_zoom = get_min_zoom(zoom_levels)
+                cur_out.execute('''
+                    UPDATE metadata 
+                    SET value = ? 
+                    WHERE name = 'minzoom'
+                ''', (min_zoom,))
+
+            # Update maxzoom
+            cur_out.execute("SELECT value FROM metadata WHERE name = 'maxzoom'")
+            zoom_levels = cur_out.fetchone()[0]  # Fetch the value
+
+            max_zoom = 0
+            if zoom_levels:
+                max_zoom = get_max_zoom(zoom_levels)
+                cur_out.execute('''
+                    UPDATE metadata 
+                    SET value = ? 
+                    WHERE name = 'maxzoom'
+                ''', (max_zoom,))
+            
+            # Update max bounds
+            cur_out.execute("SELECT value FROM metadata WHERE name = 'bounds'")
+            bounds = cur_out.fetchone()[0]  # Fetch the value
+            if bounds:
+                min_bound = get_max_bound(bounds)
+
+                cur_out.execute('''
+                    UPDATE metadata 
+                    SET value = ? 
+                    WHERE name = 'bounds'
+                    ''', (min_bound,))
+
+            # Update center
+            cur_out.execute("SELECT value FROM metadata WHERE name = 'bounds'")
+            bound = cur_out.fetchone()[0]  
+            center = get_center_of_bound(bound)
+            center_of_bound = ''
+            if center != '':
+                center_of_bound = center +f',{max_zoom}'
+
             cur_out.execute('''
                 UPDATE metadata 
                 SET value = ? 
-                WHERE name = 'minzoom'
-            ''', (min_zoom,))
+                WHERE name = 'center'
+                ''', (center_of_bound,))
 
-        # Update maxzoom
-        cur_out.execute("SELECT value FROM metadata WHERE name = 'maxzoom'")
-        zoom_levels = cur_out.fetchone()[0]  # Fetch the value
-
-        max_zoom = 0
-        if zoom_levels:
-            max_zoom = get_max_zoom(zoom_levels)
+            # Update description
+            description = 'Merge multiple MBTiles files into a single MBTiles file using mbtilesmerge from tiles_util'
             cur_out.execute('''
-                UPDATE metadata 
-                SET value = ? 
-                WHERE name = 'maxzoom'
-            ''', (max_zoom,))
+                INSERT OR REPLACE INTO metadata (name, value)
+                VALUES ('description', ?)
+            ''', (description,))
         
-        # Update max bounds
-        cur_out.execute("SELECT value FROM metadata WHERE name = 'bounds'")
-        bounds = cur_out.fetchone()[0]  # Fetch the value
-        if bounds:
-            min_bound = get_max_bound(bounds)
+            conn_out.commit()
+            print(f"Successfully merged metadata into {output_mbtiles}")
+            
+        except Exception as e:
+            logging.error(f"Error Merging metadata: {e}")
 
-            cur_out.execute('''
-                UPDATE metadata 
-                SET value = ? 
-                WHERE name = 'bounds'
-                ''', (min_bound,))
-
-        # Update center
-        cur_out.execute("SELECT value FROM metadata WHERE name = 'bounds'")
-        bound = cur_out.fetchone()[0]  
-        center = get_center_of_bound(bound)
-        center_of_bound = ''
-        if center != '':
-            center_of_bound = center +f',{max_zoom}'
-
-        cur_out.execute('''
-            UPDATE metadata 
-            SET value = ? 
-            WHERE name = 'center'
-            ''', (center_of_bound,))
-
-        # Update description
-        description = 'Merge multiple MBTiles files into a single MBTiles file using mbtilesmerge from tiles_util'
-        cur_out.execute('''
-            INSERT OR REPLACE INTO metadata (name, value)
-            VALUES ('description', ?)
-        ''', (description,))
-       
-        conn_out.commit()
-        print(f"Successfully merged metadata into {output_mbtiles}")
-        
-    except Exception as e:
-        logging.error(f"Error Merging metadata: {e}")
-
-    finally:
-        for conn in connections:
-            conn.close()   
-        conn_out.close()
+        finally:
+            for conn in connections:
+                conn.close()   
+            conn_out.close()
 
 
 
