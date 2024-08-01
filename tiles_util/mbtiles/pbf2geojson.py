@@ -27,10 +27,12 @@ def main():
     parser.add_argument('-y', type=int, help='Tile y coordinate')
     # parser.add_argument("-l", "--layer", help="include only the specified layer", type=str)
     parser.add_argument('-o', '--output', type=str, required=True, help='Output GeoJSON file')
+    parser.add_argument('-flipy', '--flipy', help='Use TMS (flip y) format: 1 or 0', type=int, default=0)
 
     args = parser.parse_args()    
     tile_data,z,x,y = None,None,None,None
     url_or_path = args.input
+    flipy = args.flipy
     XYZ_REGEX = r"\/(\d+)\/(\d+)\/(\d+)"
 
     if _is_url(url_or_path):
@@ -45,12 +47,11 @@ def main():
             raise ValueError("-z, -x, -y must be specified for MBTiles or PBF file!")
         z = args.z
         x = args.x
-        y = args.y
-        flip_y = (1 << z) - 1 - y
+        y = args.y        
         if url_or_path.endswith('.mbtiles'):
             try:
                 conn = sqlite3.connect(url_or_path)
-                cursor = conn.cursor()
+                cursor = conn.cursor()                   
                 cursor.execute('''
                     SELECT tile_data 
                     FROM tiles 
@@ -63,7 +64,7 @@ def main():
                 if row:
                     tile_data = row[0]
                 else:
-                    logging.error(f"Tile not found in MBTiles file at zoom_level={z}, tile_column={x}, tile_row={(1 << z) - 1 - y}")
+                    logging.error(f"Tile not found in MBTiles file at zoom_level={z}, tile_column={x}, tile_row={y}")
                     return None
             except sqlite3.Error as e:
                 logging.error(f"Failed to read MBTiles file {url_or_path}: {e}")
@@ -85,7 +86,8 @@ def main():
                 tile_data = zlib.decompress(tile_data) 
         except Exception as e:
             logging.error(f"Failed to decompress gzip data: {e}")
-
+        if flipy: 
+            y = (1 << z) - 1 - y          
         tile_data_to_geojson(tile_data, x,y,z,args.output)
 
 if __name__ == '__main__':
