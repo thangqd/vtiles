@@ -24,53 +24,55 @@ def write_metadata_to_json(metadata, dirname):
 def determine_tile_format(cursor):
   """Determine tile format based on metadata."""
   cursor.execute("SELECT value FROM metadata WHERE name='format'")
-  tile_format = cursor.fetchone()
+  tile_format = cursor.fetchone()[0]
   if tile_format:
-      if tile_format[0] == 'png' or tile_format[0] == 'webp':
+      if tile_format== 'png' or tile_format == 'webp':
           return 'png'
-      elif tile_format[0] == 'jpg':
+      elif tile_format == 'jpg':
           return 'jpg'
-      elif tile_format[0] == 'pbf':
+      elif tile_format == 'pbf':
           return 'pbf'
   return ''
 
-def count_total_tiles(cursor, min_zoom, max_zoom):
-    cursor.execute('SELECT COUNT(*) FROM tiles WHERE zoom_level BETWEEN ? AND ?', (min_zoom, max_zoom))
-    return cursor.fetchone()[0]
-
-def get_max_zoom_from_mbtiles(cursor):
+def get_max_zoom(cursor):
     cursor.execute('SELECT MAX(zoom_level) FROM tiles')
-    return cursor.fetchone()[0]
+    max_zoom = cursor.fetchone()[0]
+    return max_zoom
 
-def convert_mbtiles_to_folder(input_filename, output_folder, tms=0, min_zoom=0, max_zoom=None):
-    connection = sqlite3.connect(input_filename)
+def convert_mbtiles_to_folder(input_mbtiles, output_folder, flipy=0, min_zoom=0, max_zoom=None):
+    connection = sqlite3.connect(input_mbtiles)
     cursor = connection.cursor()
     
     safe_makedir(output_folder)
     tile_format = determine_tile_format(cursor)
     
-    mbtiles_max_zoom = get_max_zoom_from_mbtiles(cursor)
+    mbtiles_max_zoom = get_max_zoom(cursor)
     if max_zoom is None or max_zoom > mbtiles_max_zoom:
         max_zoom = mbtiles_max_zoom
 
-    total_tiles = count_total_tiles(cursor, min_zoom, max_zoom)
-    
+   
     metadata = extract_metadata(cursor)
     write_metadata_to_json(metadata, output_folder)
     
     cursor.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles WHERE zoom_level BETWEEN ? AND ? ORDER BY zoom_level', (min_zoom, max_zoom))
-    
-    with tqdm(total=total_tiles, desc="Converting mbtiles to folder", unit="tile") as pbar:
-      for zoom, col, row, tile_data in cursor:
-        y = flip_y(zoom, row) if tms else row
+    tiles = cursor.fetchall()
+
+    for zoom, col, row, tile_data in tqdm(tiles, unit = ' tiles ', desc='Processing tiles'):
+        # Flip the Y coordinate if flipy is True
+        y = flip_y(zoom, row) if flipy else row
+
+        # Construct the directory path
         tile_dir = os.path.join(output_folder, str(zoom), str(col))
+
+        # Ensure the directory exists
         safe_makedir(tile_dir)
+
+        # Construct the file path
         tile_path = os.path.join(tile_dir, f'{y}.{tile_format}')
-        
+
+        # Write the tile data to the file
         with open(tile_path, 'wb') as tile_file:
             tile_file.write(tile_data)
-        
-        pbar.update(1)
 
     print('Converting mbtiles to folder done!')
     connection.close()

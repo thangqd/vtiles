@@ -1,75 +1,124 @@
 import sqlite3, argparse, sys, math, logging, time, os, json
 from tqdm import tqdm
 logger = logging.getLogger(__name__)
-from tiles_util.utils.geopreocessing import num2deg, flip_y
+from tiles_util.utils.geopreocessing import flip_y
+import tiles_util.utils.mercantile as mercantile
 
 def mbtiles_connect(mbtiles_file):
   try:
-    con = sqlite3.connect(mbtiles_file)
-    return con
+    conn = sqlite3.connect(mbtiles_file)
+    return conn
   except Exception as e:
     logger.error("Could not connect to MBTiles file")
     logger.exception(e)
     sys.exit(1)
 
-def mbtiles_setup(cur):
-  cur.execute("""
+def mbtiles_setup(cursor):
+  cursor.execute("""
     create table tiles (
       zoom_level integer,
       tile_column integer,
       tile_row integer,
       tile_data blob);
       """)
-  cur.execute("""create table metadata (name text, value text);""")
-  cur.execute("""create unique index name on metadata (name);""")
-  cur.execute("""create unique index tile_index on tiles
-              (zoom_level, tile_column, tile_row);""")
+  cursor.execute("""create table metadata (name text, value text);""")
+  cursor.execute("""create unique index name on metadata (name);""")
+  cursor.execute("""create unique index tile_index on tiles(zoom_level, tile_column, tile_row);""")
 
-def import_metadata(cur, metadata_json):
+def import_metadata(cursor, metadata_json):
   for name, value in metadata_json.items():
-    cur.execute('insert into metadata (name, value) values (?, ?)',
+    cursor.execute('insert into metadata (name, value) values (?, ?)',
                 (name, value))
 
+def get_zoom_levels(cursor):   
+    # Query to get min and max zoom levels
+    cursor.execute('''
+        SELECT MIN(zoom_level) AS min_zoom, MAX(zoom_level) AS max_zoom
+        FROM tiles
+    ''')    
+    result = cursor.fetchone()    
+    min_zoom = result[0] if result else None
+    max_zoom = result[1] if result else None  
+
+    return min_zoom, max_zoom
+
+def get_bounds_at_zoom(cursor, zoom_level):
+    # Query tiles at the specified zoom level
+    cursor.execute("SELECT tile_column, tile_row FROM tiles WHERE zoom_level = ?", (zoom_level,))
+    tiles = cursor.fetchall()
+
+    # Calculate bounding boxes for each tile
+    bounds = []
+    for tile in tiles:
+        x, y = tile
+        flip_y = (1 << zoom_level) - 1 - y # TMS scheme
+        # Calculate bounds for the given tile coordinates
+        tile_bounds = mercantile.bounds(x,flip_y, zoom_level)
+        bounds.append(tile_bounds)
+
+    return bounds
+
+def compute_max_bound(bounds):
+    # Initialize min and max coordinates with extreme values
+    min_lat = min_lon = float('inf')
+    max_lat = max_lon = float('-inf')
+
+    for bound in bounds:
+        # Unpack bounding box coordinates (west, south, east, north)
+        west, south, east, north = bound
+
+        # Update min and max values
+        min_lon = min(min_lon, west)
+        max_lon = max(max_lon, east)    
+        min_lat = min(min_lat, south)
+        max_lat = max(max_lat, north)
+            
+    center_lon = (min_lon + max_lon) / 2
+    center_lat = (min_lat + max_lat) / 2
+
+    # Return the overall bounding box
+    return min_lon, min_lat, max_lon, max_lat,center_lon,center_lat
+
+def get_bounds_center(cursor):   
+    boundsString, centerString = None, None
+    try:    
+        _,max_zoom = get_zoom_levels(cursor)
+        bounds_at_max_zoom = get_bounds_at_zoom(cursor, max_zoom)
+        bounds = compute_max_bound(bounds_at_max_zoom)
+        boundsString = ','.join(map(str, bounds[:4]))
+        centerString = ','.join(map(str, bounds[4:]))+ f',{max_zoom}'     
+        return boundsString, centerString
+    except Exception as e:
+        logging.error(f"Get bounds and center erros: {e}")        
+        boundsString = '-180.000000,-85.051129,180.000000,85.051129'
+        centerString = '0,0,0'
+        return boundsString, centerString
+
+
 # Create metadata table in case no metadata.json found in the tiles folder
-def create_metadata(cur, name, format, tms=0):      
-  cur.execute("SELECT min(zoom_level) FROM tiles")
-  minzoom = cur.fetchone()[0]
-  # Execute SQL query to find the maximum value
-  cur.execute("SELECT max(zoom_level) FROM tiles")
-  maxzoom = cur.fetchone()[0]
-
-  cur.execute("SELECT min(tile_row), max(tile_row), min(tile_column), max(tile_column) from tiles WHERE zoom_level = ?", [maxzoom])
-
-  minY, maxY, minX, maxX = cur.fetchone()
-  if tms == 1:
-    minY = (2 ** maxzoom) - minY - 1
-    maxY = (2 ** maxzoom) - maxY - 1
-
-  minLat, minLon = num2deg(minX, minY, maxzoom)
-  maxLat, maxLon = num2deg(maxX+1, maxY+1, maxzoom)
-
-  bounds = [minLon, minLat, maxLon, maxLat]
-  boundsString = ','.join(map(str, bounds))
-
-  center = [(minLon + maxLon)/2, (minLat + maxLat)/2, maxzoom]
-  centerString = ','.join(map(str, center))
-
-  cur.executemany("INSERT INTO metadata (name, value) VALUES (?, ?);", [
-  ("name", name),
-  ("format", format), 
-  ("bounds", boundsString), 
-  ("center", centerString), 
-  ("minzoom", minzoom), 
-  ("maxzoom", maxzoom), 
-  ("desccription", 'MBTiles converted from a tiles folder using tiles-util'), 
-  ("attribution", '<a href="https://github.com/thangqd/tiles_util" target="_blank">&copy; tiles-util</a>'),
-  ("type", ''),
-  ("version", '')
-])
+def create_metadata(cursor, name, format, tms=0): 
+  try:
+    minzoom, maxzoom = get_zoom_levels(cursor)
+    bounds, center = get_bounds_center(cursor)
+    cursor.executemany("INSERT INTO metadata (name, value) VALUES (?, ?);", [
+      ("name", name),
+      ("format", format), 
+      ("bounds", bounds), 
+      ("center", center), 
+      ("minzoom", minzoom), 
+      ("maxzoom", maxzoom), 
+      ("desccription", 'MBTiles converted from a tiles folder using tiles-util'), 
+      ("attribution", '<a href="https://github.com/thangqd/tiles_util" target="_blank">&copy; tiles-util</a>'),
+      ("type", ''),
+      ("version", '1')
+    ])
+    logger.info('Creating metadata done.')
+  except Exception as e:
+      print(f"Error creating metadata: {e}")
 
 def optimize_connection(cur):
   cur.execute("""PRAGMA synchronous=0""")
-  cur.execute("""PRAGMA locking_mode=EXCLUSIVE""")
+  # cur.execute("""PRAGMA locking_mode=EXCLUSIVE""")
   cur.execute("""PRAGMA journal_mode=DELETE""")
 
 def get_dirs(path):
@@ -84,11 +133,9 @@ def folder2mbtiles(input_folder, mbtiles_file, tms=0):
   optimize_connection(cur)
   mbtiles_setup(cur)
   metadata_json = os.path.join(input_folder, 'metadata.json')
-  total_tiles = sum(len(files) for _, _, files in os.walk(input_folder))
-  
+ 
   if os.path.exists(metadata_json):
     metadata = json.load(open(metadata_json, 'r'))
-    total_tiles = total_tiles - 1 
     import_metadata(cur, metadata)
     logger.info('Importing metadata done.')
   else:
@@ -97,7 +144,7 @@ def folder2mbtiles(input_folder, mbtiles_file, tms=0):
   # count = 0
   # start_time = time.time()
   
-  with tqdm(total=total_tiles, desc="Coverting", unit="file") as pbar:
+  with tqdm(desc="Coverting tiles", unit=" tiles") as pbar:
     for zoom_dir in get_dirs(input_folder):   
       z = int(zoom_dir)
       for row_dir in get_dirs(os.path.join(input_folder, zoom_dir)):
@@ -128,10 +175,9 @@ def folder2mbtiles(input_folder, mbtiles_file, tms=0):
               #   logger.info(" %s tiles inserted (%d tiles/sec)" % (count, count / (time.time() - start_time)))
   try:
     name = os.path.basename(input_folder)
-    create_metadata(cur, name, ext, tms)
-    logger.info('Creating metadata done.')
+    create_metadata(cur, name, ext, tms)    
   except:      
-    logger.warning('No metadata created!.')
+    logger.warning('No metadata created!')
   
   cur.close()
   con.commit()

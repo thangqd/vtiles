@@ -77,7 +77,7 @@ def process_mbtiles(input_mbtiles, output_mbtiles, layers_to_keep, keep_layers=T
                     in_cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles ORDER BY zoom_level")
                     tiles = in_cursor.fetchall()
                     
-                    for zoom_level, tile_column, tile_row, tile_data in tqdm(tiles, desc="Processing tiles", unit="tile"):
+                    for zoom_level, tile_column, tile_row, tile_data in tqdm(tiles, desc="Processing tiles", unit=" tiles"):
                         if tile_data[:2] == b'\x1f\x8b':
                             tile_data = gzip.decompress(tile_data)
                         elif tile_data[:2] in [b'\x78\x9c', b'\x78\x01', b'\x78\xda']:

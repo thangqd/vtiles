@@ -14,17 +14,8 @@ def extract_tile_to_pbf(mbtiles_file, z, x, y, output_pbf):
         conn.close()
         
         if row:
-            tile_data = row[0]            
-            # # Check for GZIP compression
-            # if tile_data[:2] == b'\x1f\x8b':
-            #     tile_data = gzip.decompress(tile_data)
-            #     print('GZIP')
-            # # Check for ZLIB compression
-            # elif tile_data[:2] == b'\x78\x9c' or tile_data[:2] == b'\x78\x01' or tile_data[:2] == b'\x78\xda':
-            #     tile_data = zlib.decompress(tile_data)
-            #     print('ZLIB')
-
-            # # Write the decompressed tile data to the output PBF file
+            tile_data = row[0] 
+            # Write the decompressed tile data to the output PBF file
             with open(output_pbf, 'wb') as f:
                 f.write(tile_data)
             print(f"Tile {z}/{x}/{y} successfully extracted to {output_pbf}")
@@ -32,8 +23,6 @@ def extract_tile_to_pbf(mbtiles_file, z, x, y, output_pbf):
             print("Tile not found in MBTiles file")
     except sqlite3.Error as e:
         print(f"Failed to read MBTiles file: {e}")
-    # except (OSError, zlib.error, gzip.BadGzipFile) as e:
-    #     print(f"Failed to decompress tile data: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description='Extract a tile from MBTiles to PBF.')

@@ -2,23 +2,42 @@ import hashlib
 import logging
 import os
 import shutil
-import sys
 import tarfile
 import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
-from contextlib import closing
 from urllib.parse import urlparse
-
+import math
 import boto3
-import click
 import requests
 import ujson
+import sqlite3
+from tiles_util.utils.mapbox_vector_tile import decode
+import zlib, gzip
+import tiles_util.utils.mercantile as mercantile
 
 CHUNK_SIZE = 1024
 
+def num2deg(xtile, ytile, zoom):
+		n = 2.0 ** zoom
+		lon_deg = xtile / n * 360.0 - 180.0
+		lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
+		lat_deg = math.degrees(lat_rad)
+		return (lat_deg, lon_deg)
+
+def flip_y(zoom, y):
+  return (2**zoom-1) - y
+
+def safe_makedir(d):
+  if os.path.exists(d):
+    return
+  os.makedirs(d)
+
+def set_dir(d):
+  safe_makedir(d)
+  os.chdir(d)
 
 def fix_wkt(data):
     result = []
@@ -104,24 +123,100 @@ def fix_wkt(data):
     return result
 
 
-def num2deg(xtile, ytile, zoom):
-		n = 2.0 ** zoom
-		lon_deg = xtile / n * 360.0 - 180.0
-		lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
-		lat_deg = math.degrees(lat_rad)
-		return (lat_deg, lon_deg)
+# Check if mbtiles is vector
+def check_vector(input_mbtiles):    
+    try: 
+        conn = sqlite3.connect(input_mbtiles)
+        cursor = conn.cursor()
+        cursor.execute("SELECT tile_data FROM tiles LIMIT 1")
+        tile_data = cursor.fetchone()[0]
+        compression_type = ''
+        if tile_data[:2] == b'\x1f\x8b':
+            compression_type = 'GZIP'
+            tile_data = gzip.decompress(tile_data)
+        elif tile_data[:2] == b'\x78\x9c' or tile_data[:2] == b'\x78\x01' or tile_data[:2] == b'\x78\xda':
+            compression_type = 'ZLIB'
+            tile_data = zlib.decompress(tile_data)
+        decode(tile_data)
+        conn.close()
+        return True, compression_type
+    except:
+        conn.close()
+        return False, compression_type
 
-def flip_y(zoom, y):
-  return (2**zoom-1) - y
+def get_zoom_levels(input_mbtiles):
+    conn = sqlite3.connect(input_mbtiles)
+    cursor = conn.cursor()
+    
+    # Query to get min and max zoom levels
+    cursor.execute('''
+        SELECT MIN(zoom_level) AS min_zoom, MAX(zoom_level) AS max_zoom
+        FROM tiles
+    ''')
+    
+    result = cursor.fetchone()    
+    conn.close()    
+    min_zoom = result[0] if result else None
+    max_zoom = result[1] if result else None  
 
-def safe_makedir(d):
-  if os.path.exists(d):
-    return
-  os.makedirs(d)
+    return min_zoom, max_zoom
 
-def set_dir(d):
-  safe_makedir(d)
-  os.chdir(d)
+def get_bounds_at_zoom(mbtiles_input, zoom_level):
+    # Connect to the MBTiles SQLite database
+    conn = sqlite3.connect(mbtiles_input)
+    cursor = conn.cursor()
+
+    # Query tiles at the specified zoom level
+    cursor.execute("SELECT tile_column, tile_row FROM tiles WHERE zoom_level = ?", (zoom_level,))
+    tiles = cursor.fetchall()
+
+    # Calculate bounding boxes for each tile
+    bounds = []
+    for tile in tiles:
+        x, y = tile
+        flip_y = (1 << zoom_level) - 1 - y # TMS scheme
+        # Calculate bounds for the given tile coordinates
+        tile_bounds = mercantile.bounds(x,flip_y, zoom_level)
+        bounds.append(tile_bounds)
+
+    conn.close()
+    return bounds
+
+def compute_max_bound(bounds):
+    # Initialize min and max coordinates with extreme values
+    min_lat = min_lon = float('inf')
+    max_lat = max_lon = float('-inf')
+
+    for bound in bounds:
+        # Unpack bounding box coordinates (west, south, east, north)
+        west, south, east, north = bound
+
+        # Update min and max values
+        min_lon = min(min_lon, west)
+        max_lon = max(max_lon, east)    
+        min_lat = min(min_lat, south)
+        max_lat = max(max_lat, north)
+            
+    center_lon = (min_lon + max_lon) / 2
+    center_lat = (min_lat + max_lat) / 2
+
+    # Return the overall bounding box
+    return min_lon, min_lat, max_lon, max_lat,center_lon,center_lat
+
+def get_bounds_center(input_mbtiles):   
+    boundsString, centerString = None, None
+    try:    
+        _,max_zoom = get_zoom_levels(input_mbtiles)
+        bounds_at_max_zoom = get_bounds_at_zoom(input_mbtiles, max_zoom)
+        bounds = compute_max_bound(bounds_at_max_zoom)
+        boundsString = ','.join(map(str, bounds[:4]))
+        centerString = ','.join(map(str, bounds[4:]))+ f',{max_zoom}'     
+        return boundsString, centerString
+    except Exception as e:
+        logging.error(f"Get bounds and center erros: {e}")        
+        boundsString = '-180.000000,-85.051129,180.000000,85.051129'
+        centerString = '0,0,0'
+        return boundsString, centerString
 
 
 def get_files(path):

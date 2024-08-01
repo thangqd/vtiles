@@ -360,8 +360,6 @@ def merge_mbtiles(input_mbtiles, output_mbtiles):
                 conn.close()   
             conn_out.close()
 
-
-
 def main():
     parser = argparse.ArgumentParser(description="Merge multiple MBTiles files into a single MBTiles file.")
     parser.add_argument('-i', '--input', nargs='+', required=True, help='Input MBTiles files to merge.')

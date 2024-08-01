@@ -49,7 +49,6 @@ def mbtiles_to_pmtiles(input, output, maxzoom=None):
     cursor = conn.cursor()
 
     with write(output) as writer:
-
         # collect a set of all tile IDs
         tileid_set = []
         for row in cursor.execute(
