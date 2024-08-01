@@ -31,7 +31,7 @@ def create_tile(z, x, y):
     }
 
     tile_data = {
-        'name': 'debug_grid',
+        'name': 'vectortile_grid',
         'features': [feature]
     }
 
@@ -64,9 +64,10 @@ def create_mbtiles(tiles, output_mbtiles, max_zoom):
     # Create tiles
     for tile in tqdm(tiles, desc="Creating tiles"):
         z, x, y = tile.z, tile.x, tile.y
+        flip_y = (2 ** z - 1) - y
         tile_data = create_tile(z, x, y)
         cursor.execute('INSERT INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?);', 
-                       (z, x, y, tile_data))
+                       (z, x, y , tile_data))
 
     conn.commit()
     conn.close()
