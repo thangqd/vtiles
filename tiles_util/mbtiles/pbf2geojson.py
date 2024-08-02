@@ -27,7 +27,7 @@ def main():
     parser.add_argument('-y', type=int, help='Tile y coordinate')
     # parser.add_argument("-l", "--layer", help="include only the specified layer", type=str)
     parser.add_argument('-o', '--output', type=str, required=True, help='Output GeoJSON file')
-    parser.add_argument('-flipy', '--flipy', help='Use TMS (flip y) format: 1 or 0', type=int, default=0)
+    parser.add_argument('-flipy', '--flipy', help='Use TMS (flip y) format: 1 or 0', type=int, choices=[0, 1],  default=0)
 
     args = parser.parse_args()    
     tile_data,z,x,y = None,None,None,None

@@ -29,51 +29,61 @@ def decompress_tile_data(tile_data):
     except Exception as e:
         logging.error(f"Failed to decompress data: {e}")
         return tile_data
+    
+def merge_geojsons(geojson_list):
+    merged_geojson = {}
 
-def mbtiles_to_geojson(input_mbtiles, output_geojson, zoom_level,flipy):
+    for geojson in geojson_list:
+        for key, feature_collection in geojson.items():
+            if key not in merged_geojson:
+                merged_geojson[key] = {'type': 'FeatureCollection', 'features': []}
+            merged_geojson[key]['features'].extend(feature_collection['features'])
+    
+    return merged_geojson
+
+
+def mbtiles_to_geojson(input_mbtiles, output_geojson, zoom_level, flip_y):
     all_features = []
-    # try:
-    conn = sqlite3.connect(input_mbtiles)
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT tile_column, tile_row, tile_data 
-        FROM tiles 
-        WHERE zoom_level=?''', (zoom_level,))
-    rows = cursor.fetchall()
-    conn.close()
+    try:
+        conn = sqlite3.connect(input_mbtiles)
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT tile_column, tile_row, tile_data 
+            FROM tiles 
+            WHERE zoom_level=?''', (zoom_level,))
+        rows = cursor.fetchall()
+        conn.close()
 
-    for x, y, tile_data in tqdm(rows, desc="Converting tiles to GeoJSON"):
-        if flipy: 
-            y = (1 << zoom_level) - 1 - y
-        tile_data = decompress_tile_data(tile_data)
-        if tile_data:
-            features = tile_data_to_geojson(tile_data, x, y, zoom_level)
-            print(features)
-            # if features:
-            #     all_features.extend(features['features'])
+        for x, y, tile_data in tqdm(rows, desc="Converting tiles to GeoJSON"):
+            if flip_y: 
+                y = (1 << zoom_level) - 1 - y
+            tile_data = decompress_tile_data(tile_data)
+            if tile_data:
+                features = tile_data_to_geojson(tile_data, x, y, zoom_level)            
+                if features:
+                    all_features.append(features)
 
-    # geojson_data = {
-    #     "type": "FeatureCollection",
-    #     "features": features
-    # }
-    # print(geojson_data)
-    with open(output_geojson, 'w') as f:
-        json.dump(features, f, indent=2)
-    print(f"GeoJSON data has been saved to {output_geojson}")
-    # except sqlite3.Error as e:
-    #     logging.error(f"Failed to read MBTiles file {input_mbtiles}: {e}")
-    # except Exception as e:
-    #     logging.error(f"Failed to convert {input_mbtiles} at zoom level {zoom_level} to GeoJSON: {e}")
+        merged_geojson = merge_geojsons(all_features)
+        with open(output_geojson, 'w') as f:
+            json.dump(merged_geojson, f, indent=2)
+        logging.info(f"GeoJSON data has been saved to {output_geojson}")
+
+    except sqlite3.Error as e:
+        logging.error(f"Failed to read MBTiles file {input_mbtiles}: {e}")
+    except Exception as e:
+        logging.error(f"Failed to convert {input_mbtiles} at zoom level {zoom_level} to GeoJSON: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description='Convert Tile data from PBF file, MBTiles file, or URL to GeoJSON.')
     parser.add_argument('-i', '--input', type=str, required=True, help='Input PBF file, MBTiles file, or URL')
     parser.add_argument('-o', '--output', type=str, required=True, help='Output GeoJSON file')
     parser.add_argument('-z', '--zoom', type=int, required=True, help='Tile zoom level')
-    parser.add_argument('-flipy', '--flipy', help='Use TMS (flip y) format: 1 or 0', type=int, default=0)
+    parser.add_argument('-flipy', '--flipy', type=int, choices=[0, 1], default=0, help='Use TMS (flip y) format (1 for True, 0 for False)')
+
     args = parser.parse_args()
     
-    mbtiles_to_geojson(args.input,args.output, args.zoom, args.flipy)
+    mbtiles_to_geojson(args.input, args.output, args.zoom, args.flipy == 1)
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     main()
