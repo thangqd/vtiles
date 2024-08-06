@@ -57,7 +57,10 @@ setup(
             'servepmtiles=tiles_util.server.servepmtiles:main',                   
             
             'vectortilegrid.py = tiles_util.grid.vectortilegrid:main',
-
+            'pluscodegrid.py = tiles_util.grid.pluscodegrid:main',
+            'geohashgrid.py = tiles_util.grid.geohashgrid:main',
+            'h3grid.py = tiles_util.grid.h3grid:main',
+            
             'pmtilesinfo = tiles_util.utils.pmtilesinfo:main',
             'pmtiles2folder = tiles_util.utils.pmtiles2folder:main',
             'pmtiles2mbtiles = tiles_util.utils.pmtiles2mbtiles:main',           

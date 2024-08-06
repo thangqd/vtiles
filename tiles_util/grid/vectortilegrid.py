@@ -1,3 +1,4 @@
+# Reference: https://docs.maptiler.com/google-maps-coordinates-tile-bounds-projection/#3/15.00/50.00
 import argparse
 import os
 from tiles_util.utils.mapbox_vector_tile import encode
@@ -7,7 +8,6 @@ import sqlite3
 import gzip
 from tqdm import tqdm
 
-# Reference: https://docs.maptiler.com/google-maps-coordinates-tile-bounds-projection/#3/15.00/50.00
 
 def create_tile(z, x, y):
     flip_y = (2 ** z - 1) - y
