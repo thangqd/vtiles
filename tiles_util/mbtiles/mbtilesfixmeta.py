@@ -18,7 +18,7 @@ def fix_metadata(input_mbtiles, compression_type):
     # Update name and description
     name = os.path.basename(input_mbtiles)
     cursor.execute("INSERT OR IGNORE INTO metadata (name, value) VALUES (?, ?)", ('name', name))
-    desc = 'Update metadata by tiles_util.mbtilesfixmeta'
+    desc = 'Update metadata by tiles_util.mbtiles.fixmeta'
     cursor.execute("INSERT OR IGNORE INTO metadata (name, value) VALUES (?, ?)", ('description', desc))
 
     # Update format to pbf for vector MBTiles
@@ -40,7 +40,7 @@ def fix_metadata(input_mbtiles, compression_type):
         cursor.execute("INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)", ('center', center))
     conn.commit()
     conn.close() 
-    print('Fix metadata done!')
+    print(f'Fix metadata for {name} done!')
 
 def main():
     if len(sys.argv) != 2:

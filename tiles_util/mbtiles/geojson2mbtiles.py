@@ -1,13 +1,14 @@
-import json
+import json, math
 import argparse
 from tiles_util.utils.mapbox_vector_tile import encode
 import tiles_util.utils.mercantile as mercantile
 import sqlite3
 from shapely.geometry import shape, mapping
 from shapely.ops import transform
-from pyproj import Proj, transform as pyproj_transform
-from shapely.wkt import loads as wkt_loads, dumps as wkt_dumps
+from shapely.wkt import dumps as wkt_dumps
 import gzip
+from tiles_util.mbtiles import mbtilesfixmeta
+import pyproj
 
 def create_mbtiles(db_path):
     conn = sqlite3.connect(db_path)
@@ -20,10 +21,10 @@ def create_mbtiles(db_path):
     conn.close()
 
 def geojson_to_custom_format(geojson):
+    layer_name = geojson.get('name', 'geojson_layer')
     layers = {}
     # Process each feature
     for feature in geojson['features']:
-        layer_name = 'my_layer'  # Customize layer name if needed
         if layer_name not in layers:
             layers[layer_name] = []
 
@@ -48,39 +49,84 @@ def geojson_to_custom_format(geojson):
         }
         for layer_name, features in layers.items()
     ]
-    # formatted_layers = [{'name': 'my_layer', 'features': [{'geometry': 'POLYGON ((11834838.0505347177386284 1211292.9252088242210448, 11833637.9057463649660349 1212264.4709898722358048, 11835889.6059683244675398 1212893.1182599624153227, 11837546.9487712886184454 1210584.2682861764915287, 11835192.3789960406720638 1210641.4180380033794791, 11835192.3789960406720638 1210641.4180380033794791, 11834838.0505347177386284 1211292.9252088242210448))', 'properties': {'name': '1'}}, {'geometry': 'POLYGON ((11837455.5091683678328991 1209909.9012146256864071, 11838267.0356443021446466 1211327.2150599195156246, 11839615.7697874046862125 1211167.1957548058126122, 11839832.9388443436473608 1210172.7900730269029737, 11838369.9051975868642330 1209452.7032000147737563, 11837455.5091683678328991 1209909.9012146256864071))', 'properties': {'name': '1'}}, {'geometry': 'POLYGON ((11834864.5771230701357126 1209201.3277407283894718, 11836524.3525836132466793 1209498.7441527340561152, 11836015.8664598632603884 1208616.0889945253729820, 11836015.8664598632603884 1208616.0889945253729820, 11834864.5771230701357126 1209201.3277407283894718))', 'properties': {'name': '2'}}]}]
-    formatted_layers = [{
-        "name": "water",
-        "features": [
-          {
-            "geometry":"POLYGON ((0 0, 0 1, 1 1, 1 0, 0 0))",
-            "properties":{
-              "uid":123,
-              "foo":"bar",
-              "cat":"flew"
-            }
-          }
-        ]
-      }]
     return formatted_layers
 
+# def reproject_geojson_to_tile_extent(geojson_data, tile_x, tile_y, zoom, tile_size=4096):
+#     # Get the bounds of the specified tile
+#     tile_bounds = mercantile.bounds(tile_x, tile_y, zoom)
+
+#     # Calculate scale factors
+#     minx, miny, maxx, maxy = tile_bounds
+#     scale_x = tile_size / (maxx - minx)
+#     scale_y = tile_size / (maxy - miny)
+
+#     def scale_coords(x, y, z=None):
+#         return (x - minx) * scale_x, (y - miny) * scale_y
+
+#     # Convert and scale features
+#     reprojected_features = []
+#     for feature in geojson_data["features"]:
+#         geometry = shape(feature["geometry"])
+#         scaled_geometry = transform(scale_coords, geometry)
+#         reprojected_features.append({
+#             "type": "Feature",
+#             "properties": feature["properties"],
+#             "geometry": mapping(scaled_geometry)
+#         })
+
+#     # Create the new GeoJSON structure
+#     reprojected_geojson = {
+#         "type": "FeatureCollection",
+#         "name": geojson_data.get("name", "reprojected_geojson"),
+#         "crs": geojson_data.get("crs"),
+#         "features": reprojected_features
+#     }
+
+#     return reprojected_geojson
+
 def reproject_geojson_to_tile_extent(geojson_data, tile_x, tile_y, zoom, tile_size=4096):
-    # Get the bounds of the specified tile
-    tile_bounds = mercantile.bounds(tile_x, tile_y, zoom)
+    # Define the projections
+    proj_wgs84 = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
+    proj_web_mercator = pyproj.Transformer.from_crs("EPSG:3857", "EPSG:3857", always_xy=True)
+
+    # Get the bounds of the specified tile in Web Mercator coordinates
+    tile_bounds = mercantile.xy_bounds(tile_x, tile_y, zoom)
+    # tile_bounds = mercantile.bounds(tile_x, tile_y, zoom)
 
     # Calculate scale factors
     minx, miny, maxx, maxy = tile_bounds
+    if maxx == minx or maxy == miny:
+        raise ValueError("Invalid tile bounds: zero-width or zero-height tile")
     scale_x = tile_size / (maxx - minx)
     scale_y = tile_size / (maxy - miny)
 
-    def scale_coords(x, y, z=None):
-        return (x - minx) * scale_x, (y - miny) * scale_y
+    # Define the transformation functions
+    def reproject_geom(geometry):
+        return transform(lambda x, y: proj_wgs84.transform(x, y), geometry)
 
-    # Convert and scale features
+    def scale_coords(x, y, z=None):
+        x_scaled = (x - minx) * scale_x
+        # y_scaled = tile_size - (y - miny) * scale_y  # Flip y-axis
+        y_scaled = (y - miny) * scale_y   
+        return x_scaled, y_scaled
+        
+
+    def scale_geom(geometry):
+        # return transform(lambda x, y: scale_coords(x, y), geometry)
+        return transform(lambda x, y: scale_coords(x, y), geometry)
+
+    # Reproject and scale features
     reprojected_features = []
     for feature in geojson_data["features"]:
         geometry = shape(feature["geometry"])
-        scaled_geometry = transform(scale_coords, geometry)
+        
+        # Reproject from WGS84 to Web Mercator
+        reprojected_geometry = reproject_geom(geometry)
+        
+        # Scale the reprojected geometry to tile extent
+        scaled_geometry = scale_geom(reprojected_geometry)
+        
+        # Store the reprojected geometry
         reprojected_features.append({
             "type": "Feature",
             "properties": feature["properties"],
@@ -115,7 +161,7 @@ def main():
     args = parser.parse_args()
 
     # Read the input GeoJSON file
-    with open(args.input, 'r') as f:
+    with open(args.input, 'r',encoding='utf-8') as f:
         geojson_data = json.load(f)
 
     # Define tile coordinates
@@ -125,11 +171,15 @@ def main():
     create_mbtiles(args.output)
     
     geojson_reprojected = reproject_geojson_to_tile_extent(geojson_data,z, x, y)
-    print (geojson_reprojected)
+    # print (geojson_reprojected)
     geojson_reprojected_processed = geojson_to_custom_format(geojson_reprojected)
-    print (geojson_reprojected_processed)
+    print (geojson_reprojected_processed[0]['name'])
+    geojson_reprojected_processed_encoded = encode(geojson_reprojected_processed)
+    geojson_reprojected_processed_encoded_compressed = gzip.compress(geojson_reprojected_processed_encoded)
+
     # Add tile to MBTiles
-    add_tile_to_mbtiles(args.output, z, x, y, encode(geojson_reprojected_processed))
+    add_tile_to_mbtiles(args.output, z, x, y, geojson_reprojected_processed_encoded_compressed)
+    mbtilesfixmeta.fix_metadata(args.output, 'GZIP') 
 
 if __name__ == "__main__":
     main()
