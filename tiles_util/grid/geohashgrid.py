@@ -1,4 +1,4 @@
-# Reference: https://geohash.softeng.co/uekkn, https://github.com/vinsci/geohash
+# Reference: https://geohash.softeng.co/uekkn, https://github.com/vinsci/geohash, https://www.movable-type.co.uk/scripts/geohash.html?geohash=dp3
 import argparse
 import  tiles_util.utils.geocode.geohash as geohash
 from shapely.geometry import Polygon, mapping

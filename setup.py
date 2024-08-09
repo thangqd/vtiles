@@ -60,6 +60,7 @@ setup(
             'pluscodegrid.py = tiles_util.grid.pluscodegrid:main',
             'geohashgrid.py = tiles_util.grid.geohashgrid:main',
             'h3grid.py = tiles_util.grid.h3grid:main',
+            's2grid.py = tiles_util.grid.s2grid:main',
             
             'pmtilesinfo = tiles_util.utils.pmtilesinfo:main',
             'pmtiles2folder = tiles_util.utils.pmtiles2folder:main',
