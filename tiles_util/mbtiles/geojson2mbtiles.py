@@ -68,15 +68,18 @@ def transform_to_layer(data, layer_name):
     for feature_collection in transformed_data:
         for feature in feature_collection['features']:
             # Convert 'geometry' based on type
-            if feature['type'] == 1:
-                coords = feature['geometry'][0]
-                feature['geometry'] = f"POINT({coords[0]} {coords[1]})"
-            elif feature['type'] == 2:
+            if feature['type'] == 1:  # Point
                 coords = feature['geometry']
+                coords[1] = 4096 - coords[1]  # Apply y-axis inversion
+                feature['geometry'] = f"POINT({coords[0]} {coords[1]})"
+            elif feature['type'] == 2:  # LineString
+                coords = feature['geometry']
+                coords = [(x, 4096 - y) for x, y in coords]  # Apply y-axis inversion to each coordinate
                 coords_str = ', '.join([f"{x} {y}" for x, y in coords])
                 feature['geometry'] = f"LINESTRING({coords_str})"
-            elif feature['type'] == 3:
+            elif feature['type'] == 3:  # Polygon
                 coords = feature['geometry'][0]
+                coords = [(x, 4096 - y) for x, y in coords]  # Apply y-axis inversion to each coordinate
                 coords_str = ', '.join([f"{x} {y}" for x, y in coords])
                 feature['geometry'] = f"POLYGON(({coords_str}))"
             
@@ -85,6 +88,7 @@ def transform_to_layer(data, layer_name):
 
             # Remove 'type' as it's no longer needed
             del feature['type']
+
 
     return transformed_data
 
