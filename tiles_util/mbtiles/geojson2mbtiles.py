@@ -1,7 +1,8 @@
-import json, math
+import json, math, os
 import argparse
-from tiles_util.utils.mapbox_vector_tile import encode
+from tiles_util.utils.mapbox_vector_tile import encode, decode
 import tiles_util.utils.mercantile as mercantile
+from tiles_util.utils.geojson2vt.geojson2vt import geojson2vt
 import sqlite3
 from shapely.geometry import shape, mapping
 from shapely.ops import transform
@@ -9,6 +10,14 @@ from shapely.wkt import dumps as wkt_dumps
 import gzip
 from tiles_util.mbtiles import mbtilesfixmeta
 import pyproj
+import logging
+from tiles_util.utils.geopreocessing import fix_wkt
+from shapely.geometry import shape, GeometryCollection
+
+logging.basicConfig(level=logging.INFO)
+
+from shapely.geometry import shape
+from shapely.wkt import dumps as wkt_dumps
 
 def create_mbtiles(db_path):
     conn = sqlite3.connect(db_path)
@@ -20,129 +29,6 @@ def create_mbtiles(db_path):
     conn.commit()
     conn.close()
 
-def geojson_to_custom_format(geojson):
-    layer_name = geojson.get('name', 'geojson_layer')
-    layers = {}
-    # Process each feature
-    for feature in geojson['features']:
-        if layer_name not in layers:
-            layers[layer_name] = []
-
-        # Convert GeoJSON feature geometry to WKT format
-        geom = shape(feature['geometry'])  # Convert GeoJSON to Shapely geometry
-        geom_wkt = wkt_dumps(geom)  # Convert Shapely geometry to WKT
-
-        # Prepare feature dictionary
-        feature_dict = {
-            "geometry": geom_wkt,
-            "properties": feature["properties"]
-        }
-
-        # Add feature to the appropriate layer
-        layers[layer_name].append(feature_dict)
-
-    # Convert layers dictionary to the desired format
-    formatted_layers = [
-        {
-            "name": layer_name,
-            "features": features
-        }
-        for layer_name, features in layers.items()
-    ]
-    return formatted_layers
-
-# def reproject_geojson_to_tile_extent(geojson_data, tile_x, tile_y, zoom, tile_size=4096):
-#     # Get the bounds of the specified tile
-#     tile_bounds = mercantile.bounds(tile_x, tile_y, zoom)
-
-#     # Calculate scale factors
-#     minx, miny, maxx, maxy = tile_bounds
-#     scale_x = tile_size / (maxx - minx)
-#     scale_y = tile_size / (maxy - miny)
-
-#     def scale_coords(x, y, z=None):
-#         return (x - minx) * scale_x, (y - miny) * scale_y
-
-#     # Convert and scale features
-#     reprojected_features = []
-#     for feature in geojson_data["features"]:
-#         geometry = shape(feature["geometry"])
-#         scaled_geometry = transform(scale_coords, geometry)
-#         reprojected_features.append({
-#             "type": "Feature",
-#             "properties": feature["properties"],
-#             "geometry": mapping(scaled_geometry)
-#         })
-
-#     # Create the new GeoJSON structure
-#     reprojected_geojson = {
-#         "type": "FeatureCollection",
-#         "name": geojson_data.get("name", "reprojected_geojson"),
-#         "crs": geojson_data.get("crs"),
-#         "features": reprojected_features
-#     }
-
-#     return reprojected_geojson
-
-def reproject_geojson_to_tile_extent(geojson_data, tile_x, tile_y, zoom, tile_size=4096):
-    # Define the projections
-    proj_wgs84 = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
-    proj_web_mercator = pyproj.Transformer.from_crs("EPSG:3857", "EPSG:3857", always_xy=True)
-
-    # Get the bounds of the specified tile in Web Mercator coordinates
-    tile_bounds = mercantile.xy_bounds(tile_x, tile_y, zoom)
-    # tile_bounds = mercantile.bounds(tile_x, tile_y, zoom)
-
-    # Calculate scale factors
-    minx, miny, maxx, maxy = tile_bounds
-    if maxx == minx or maxy == miny:
-        raise ValueError("Invalid tile bounds: zero-width or zero-height tile")
-    scale_x = tile_size / (maxx - minx)
-    scale_y = tile_size / (maxy - miny)
-
-    # Define the transformation functions
-    def reproject_geom(geometry):
-        return transform(lambda x, y: proj_wgs84.transform(x, y), geometry)
-
-    def scale_coords(x, y, z=None):
-        x_scaled = (x - minx) * scale_x
-        # y_scaled = tile_size - (y - miny) * scale_y  # Flip y-axis
-        y_scaled = (y - miny) * scale_y   
-        return x_scaled, y_scaled
-        
-
-    def scale_geom(geometry):
-        # return transform(lambda x, y: scale_coords(x, y), geometry)
-        return transform(lambda x, y: scale_coords(x, y), geometry)
-
-    # Reproject and scale features
-    reprojected_features = []
-    for feature in geojson_data["features"]:
-        geometry = shape(feature["geometry"])
-        
-        # Reproject from WGS84 to Web Mercator
-        reprojected_geometry = reproject_geom(geometry)
-        
-        # Scale the reprojected geometry to tile extent
-        scaled_geometry = scale_geom(reprojected_geometry)
-        
-        # Store the reprojected geometry
-        reprojected_features.append({
-            "type": "Feature",
-            "properties": feature["properties"],
-            "geometry": mapping(scaled_geometry)
-        })
-
-    # Create the new GeoJSON structure
-    reprojected_geojson = {
-        "type": "FeatureCollection",
-        "name": geojson_data.get("name", "reprojected_geojson"),
-        "crs": geojson_data.get("crs"),
-        "features": reprojected_features
-    }
-
-    return reprojected_geojson
-
 def add_tile_to_mbtiles(db_path, z, x, y, tile_data):
     """Add a tile to the MBTiles database."""
     conn = sqlite3.connect(db_path)
@@ -150,6 +36,58 @@ def add_tile_to_mbtiles(db_path, z, x, y, tile_data):
     c.execute('INSERT OR REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?);', (z, x, y, tile_data))
     conn.commit()
     conn.close()
+
+def transform_to_layer(data, layer_name):
+    """
+    Transforms the input dictionary into a list format with a specified layer name.
+
+    Args:
+        data (dict): The input dictionary containing features and metadata.
+        layer_name (str): The name to be assigned to the layer.
+
+    Returns:
+        list: A list containing the transformed dictionary with the specified layer name.
+    """
+    transformed_data = [{
+        "name": layer_name,
+        "features": data.get('features', [])
+        # 'numPoints': data.get('numPoints'),
+        # 'numSimplified': data.get('numSimplified'),
+        # 'numFeatures': data.get('numFeatures'),
+        # 'source': data.get('source', []),
+        # 'x': data.get('x'),
+        # 'y': data.get('y'),
+        # 'z': data.get('z'),
+        # 'transformed': data.get('transformed'),
+        # 'minX': data.get('minX'),
+        # 'minY': data.get('minY'),
+        # 'maxX': data.get('maxX'),
+        # 'maxY': data.get('maxY')
+    }]
+    
+    for feature_collection in transformed_data:
+        for feature in feature_collection['features']:
+            # Convert 'geometry' based on type
+            if feature['type'] == 1:
+                coords = feature['geometry'][0]
+                feature['geometry'] = f"POINT({coords[0]} {coords[1]})"
+            elif feature['type'] == 2:
+                coords = feature['geometry']
+                coords_str = ', '.join([f"{x} {y}" for x, y in coords])
+                feature['geometry'] = f"LINESTRING({coords_str})"
+            elif feature['type'] == 3:
+                coords = feature['geometry'][0]
+                coords_str = ', '.join([f"{x} {y}" for x, y in coords])
+                feature['geometry'] = f"POLYGON(({coords_str}))"
+            
+            # Rename 'tags' to 'properties'
+            feature['properties'] = feature.pop('tags')
+
+            # Remove 'type' as it's no longer needed
+            del feature['type']
+
+    return transformed_data
+
 
 def main():
     parser = argparse.ArgumentParser(description="Convert GeoJSON to MBTiles.")
@@ -164,21 +102,43 @@ def main():
     with open(args.input, 'r',encoding='utf-8') as f:
         geojson_data = json.load(f)
 
+    layer_name = os.path.basename(args.input)
     # Define tile coordinates
     z, x, y = args.zoom, args.x, args.y
 
     # Create MBTiles file
     create_mbtiles(args.output)
-    
-    geojson_reprojected = reproject_geojson_to_tile_extent(geojson_data,z, x, y)
-    # print (geojson_reprojected)
-    geojson_reprojected_processed = geojson_to_custom_format(geojson_reprojected)
-    print (geojson_reprojected_processed[0]['name'])
-    geojson_reprojected_processed_encoded = encode(geojson_reprojected_processed)
-    geojson_reprojected_processed_encoded_compressed = gzip.compress(geojson_reprojected_processed_encoded)
+    tile_index = geojson2vt(geojson_data, {
+	'maxZoom': 5,  # max zoom to preserve detail on; can't be higher than 24
+	'tolerance': 3, # simplification tolerance (higher means simpler)
+	'extent': 4096, # tile extent (both width and height)
+	'buffer': 64,   # tile buffer on each side
+	'lineMetrics': False, # whether to enable line metrics tracking for LineString/MultiLineString features
+	'promoteId': None,    # name of a feature property to promote to feature.id. Cannot be used with `generateId`
+	'generateId': False,  # whether to generate feature ids. Cannot be used with `promoteId`
+	'indexMaxZoom': 5,       # max zoom in the initial tile index
+	'indexMaxPoints': 100000 # max number of points per tile in the index
+    }, logging.INFO)
+    tile_data = tile_index.get_tile(0,0,0)
+    print(tile_data)
+    tile_data_fixed = transform_to_layer(tile_data,layer_name)
+    print(tile_data_fixed)
+    # tile_data_fixed = fix_wkt(tile_data_fixed)    
+    tile_data_fixed_encoded = encode(tile_data_fixed)
+    # # tile_data_fixed = fix_wkt(tile_data_fixed)
+    # print(tile_data_fixed_encoded)
+    # # geojson = vt2geojson(tile_data)
 
-    # Add tile to MBTiles
-    add_tile_to_mbtiles(args.output, z, x, y, geojson_reprojected_processed_encoded_compressed)
+    # # tile_data_fixed = geojson_to_custom_format(tile_data)
+    # # print(tile_data_fixed)
+    # # tile_data_fixed_encoded = encode(tile_data)
+    tile_data_fixed_encoded_compressed = gzip.compress(tile_data_fixed_encoded)
+
+    # # # geojson_reprojected_processed_encoded = encode(tile_index)
+    # # # geojson_reprojected_processed_encoded_compressed = gzip.compress(geojson_reprojected_processed_encoded)
+
+    # # # # Add tile to MBTiles
+    add_tile_to_mbtiles(args.output, z, x, y, tile_data_fixed_encoded_compressed)
     mbtilesfixmeta.fix_metadata(args.output, 'GZIP') 
 
 if __name__ == "__main__":

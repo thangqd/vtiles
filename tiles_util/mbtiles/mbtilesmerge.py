@@ -359,6 +359,9 @@ def merge_mbtiles(input_mbtiles, output_mbtiles):
             for conn in connections:
                 conn.close()   
             conn_out.close()
+    else:
+        logging.info('Only vector mbtiles is supported.')
+        return
 
 def main():
     parser = argparse.ArgumentParser(description="Merge multiple MBTiles files into a single MBTiles file.")

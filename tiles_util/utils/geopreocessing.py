@@ -125,12 +125,12 @@ def fix_wkt(data):
 
 # Check if mbtiles is vector
 def check_vector(input_mbtiles):    
-    try: 
-        conn = sqlite3.connect(input_mbtiles)
-        cursor = conn.cursor()
-        cursor.execute("SELECT tile_data FROM tiles LIMIT 1")
-        tile_data = cursor.fetchone()[0]
-        compression_type = ''
+    conn = sqlite3.connect(input_mbtiles)
+    cursor = conn.cursor()
+    cursor.execute("SELECT tile_data FROM tiles LIMIT 1")
+    tile_data = cursor.fetchone()[0]
+    compression_type = ''
+    try:         
         if tile_data[:2] == b'\x1f\x8b':
             compression_type = 'GZIP'
             tile_data = gzip.decompress(tile_data)

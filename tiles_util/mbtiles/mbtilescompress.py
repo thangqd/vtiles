@@ -4,6 +4,7 @@ import gzip, zlib
 import logging
 import shutil
 from tqdm import tqdm
+from tiles_util.mbtiles import mbtilesfixmeta
 
 def compress_tile_data(tile_data):
     try: 
@@ -17,11 +18,8 @@ def compress_tile_data(tile_data):
     return tile_data          
 
 def compress_mbtiles(input_mbtiles, output_mbtiles):
-    
     if os.path.exists(output_mbtiles):
-            os.remove(output_mbtiles)
-
-    # Copy the original MBTiles file to the output path
+        os.remove(output_mbtiles)
     shutil.copyfile(input_mbtiles, output_mbtiles)
 
     # Open the copied MBTiles file
@@ -75,7 +73,7 @@ def compress_mbtiles(input_mbtiles, output_mbtiles):
     # Commit and close connections
     conn.commit()
     conn.close()
-
+   
 def main():
     parser = argparse.ArgumentParser(description='Decompress an MBTiles file.')
     parser.add_argument('-i', '--input', required=True, help='Path to the input MBTiles file.')
