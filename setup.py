@@ -62,6 +62,8 @@ setup(
             'geohashgrid.py = tiles_util.grid.geohashgrid:main',
             'h3grid.py = tiles_util.grid.h3grid:main',
             's2grid.py = tiles_util.grid.s2grid:main',
+            'maidenheadgrid.py = tiles_util.grid.maidenheadgrid:main',
+            'mgrsgrid.py = tiles_util.grid.mgrsgrid:main',
             
             'pmtilesinfo = tiles_util.utils.pmtilesinfo:main',
             'pmtiles2folder = tiles_util.utils.pmtiles2folder:main',

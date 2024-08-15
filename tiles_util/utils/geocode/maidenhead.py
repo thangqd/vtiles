@@ -119,7 +119,7 @@ def maidenGrid(maiden):
         lon += 5./1200
         lat += 2.5/1200
 
-    return lat, lon, lat1, lon1, lat2, lon2
+    return lat, lon, lat1, lon1, lat2, lon2, maiden
 
 def isValid(c, level):
     if level == 0:
