@@ -30,8 +30,8 @@ def create_utm_grid(minx, miny, maxx, maxy, cell_size, crs):
 # Example for UTM zone 48N (EPSG:32648)
 # bbox = (100000, 0, 900000, 9500000) # for the North 
 # bbox = (100000, 100000, 900000, 10000000) # for the South 
-bbox = (100000, 0, 900000, 10000000) # for the South # for both
-cell_size = 100000  # Cell size in meters
+bbox = (100000, 0, 900000, 10000000) #  # for both
+cell_size = 10000  # Cell size in meters
 
 # Create the grid with UTM CRS
 epsg_code = 32648

@@ -11,15 +11,30 @@
 # https://mgrs-data.org/metadata/
 # https://ufl.maps.arcgis.com/apps/dashboards/2539764e24e74bd78f265f49c7adc2d1
 # https://earth-info.nga.mil/index.php?dir=coordsys&action=gars-20x20-dloads
-# from tiles_util.utils.geocode import mgrs
+
+from tiles_util.utils.geocode import mgrs
 # mgrs_code = mgrs.toMgrs(10.63038542, 106.12923131,3)
 # # mgrs_code = mgrs.toMgrs(-84.65698112, -80.69068228,3)
 
 
 # print('mgrs_code: ', mgrs_code)
 # mgrs_encode = mgrs.toWgs(mgrs_code)
-# # mgrs_encode = mgrs.toWgs('48QYD214738')
-# print('mgrs_encode: ', mgrs_encode)
+# original point: WGS84 (10.83114203, 106.79186584), UTM(48N 695891 1197885)
+mgrs_encode = mgrs.toWgs('48PXS99') # p = 1 10.760174227850744, 106.73758927416272
+mgrs_encode = mgrs.toWgs('48PXS9597') # p = 2 10.823192907438367, 106.78367326848301
+mgrs_encode = mgrs.toWgs('48PXS958978') # p = 3 10.830382261828017, 106.79103139219501
+mgrs_encode = mgrs.toWgs('48PXS95899788') # p = 4 10.831100652944578, 106.79185866548592
+mgrs_encode = mgrs.toWgs('48PXS9589197885') # p = 5 10.8311457980804, 106.79186807843304
+
+# mgrs_encode = mgrs._mgrsToUtm('48PXS99') # p = 1  (48, 'N', 690000.0, 1190000.0)
+# mgrs_encode = mgrs._mgrsToUtm('48PXS9597') # p = 2 (48, 'N', 695000.0, 1197000.0)
+# mgrs_encode = mgrs._mgrsToUtm('48PXS958978') # p = 3  (48, 'N', 695800.0, 1197800.0)
+# mgrs_encode = mgrs._mgrsToUtm('48PXS95899788') # p = 4 (48, 'N', 695890.0, 1197880.0)
+# mgrs_encode = mgrs._mgrsToUtm('48PXS9589197885') # p = 5  (48, 'N', 695891.0, 1197885.0)
+
+
+print('mgrs_encode: ', mgrs_encode)
+# 10.83114203, 106.79186584
 import argparse
 import geopandas as gpd
 from shapely.geometry import box
