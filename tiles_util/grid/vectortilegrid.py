@@ -8,18 +8,17 @@ import sqlite3
 import gzip
 from tqdm import tqdm
 
-
 def create_tile(z, x, y):
     flip_y = (2 ** z - 1) - y
     tile_geometry = box(0, 0, 4096, 4096)
     quadkey = mercantile.quadkey(x, flip_y, z)    
     properties = {
-        'id': f'{z}_{x}_{flip_y}',
-        'tms_id': f'{z}_{x}_{y}',
-        'z': z,
-        'x': x,
-        'y': y,
-        'tms_y': y,
+        'vcode': f'z{z}x{x}y{flip_y}',
+        'tmscode': f'z{z}x{x}y{y}',
+        # 'z': z,
+        # 'x': x,
+        # 'y': flip_y,
+        # 'tms_y': y,
         'name': f'{z}/{x}/{flip_y}',
         'tms_name': f'{z}/{x}/{y}',
         'quadkey':quadkey
@@ -52,8 +51,8 @@ def create_mbtiles(tiles, output_mbtiles, max_zoom):
     cursor.execute('''create unique index tile_index on tiles(zoom_level, tile_column, tile_row);''')
 
     # Create metadata
-    cursor.execute("INSERT INTO metadata (name, value) VALUES ('name', 'Debug Grid');")
-    cursor.execute("INSERT INTO metadata (name, value) VALUES ('description', 'A debug grid for XYZ tiles using tiles_util.debuggrid');")
+    cursor.execute("INSERT INTO metadata (name, value) VALUES ('name', 'Vectortile Grid');")
+    cursor.execute("INSERT INTO metadata (name, value) VALUES ('description', 'A debug grid for XYZ tiles using tiles_util.vectortilegrid');")
     cursor.execute("INSERT INTO metadata (name, value) VALUES ('type', 'overlay');")
     cursor.execute("INSERT INTO metadata (name, value) VALUES ('version', '1');")
     cursor.execute("INSERT INTO metadata (name, value) VALUES ('format', 'pbf');")

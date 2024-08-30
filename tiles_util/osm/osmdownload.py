@@ -4,6 +4,7 @@ import urllib
 import tempfile
 from urllib.error import HTTPError
 from urllib.request import *
+import argparse
 
 from .geofabrik_sources import (
         Africa,
@@ -94,7 +95,7 @@ def get_file_size(file_name, size_type=UNIT.MB):
 def download(url, filename, update, target_dir):
     if target_dir is None:
         temp_dir = tempfile.gettempdir()
-        target_dir = os.path.join(temp_dir, "mbtiles_util")
+        target_dir = os.path.join(temp_dir, "tiles_util")
     else:
         if not os.path.isdir(target_dir):
             raise ValueError(f"The provided directory does not exist: " f"{target_dir}")
@@ -164,6 +165,58 @@ def search_source(name):
                     return sources.subregions.__dict__[subregion].__dict__[name]
     raise ValueError(f"Could not retrieve url for '{name}'.")
 
+def print_available_datasets():
+    for category, datasets in available.items():
+        print(f"\nCategory: '{category}':")
+        if isinstance(datasets, dict):
+            for subcategory, subdatasets in datasets.items():
+                print(f"subCategory: '{subcategory}':\n")
+                print(", ".join(subdatasets))
+                input("\nPress Enter to continue...\n")
+        else:
+            print(", ".join(datasets))
+        
+
+# def get_data(dataset, update=False, directory=None):
+#     """
+#     Get the path to a PBF data file, and download the data if needed.
+
+#     Parameters
+#     ----------
+#     dataset : str
+#         The name of the dataset. Run ``pyrosm.data.available`` for
+#         all available options.
+
+#     update : bool
+#         Whether the PBF file should be downloaded/updated if the dataset
+#         with the same name exists in the temp.
+
+#     directory : str (optional)
+#         Path to a directory where the PBF data will be downloaded.
+#         (does not apply for test data sets bundled with the package).
+#     """
+#     if not isinstance(dataset, str):
+#         raise ValueError(f"'dataset' should be text. Got {dataset}.")
+#     dataset = dataset.lower().strip()
+
+#     if dataset in sources._all_sources:
+#         return retrieve(search_source(dataset), update, directory)
+
+#     elif dataset.replace(" ", "") in sources._all_sources:
+#         return retrieve(search_source(dataset.replace(" ", "")), update, directory)
+
+#     # Users might pass country names without underscores (e.g. North America)
+#     elif dataset.replace(" ", "_") in sources._all_sources:
+#         return retrieve(search_source(dataset.replace(" ", "_")), update, directory)
+
+#     # Users might pass country names with dashes instead of underscores (e.g. canary-islands)
+#     elif dataset.replace("-", "_") in sources._all_sources:
+#         return retrieve(search_source(dataset.replace("-", "_")), update, directory)
+
+#     else:
+#         msg = "The dataset '{data}' is not available. ".format(data=dataset)
+#         msg += "Available datasets are: {}".format(", ".join(sources._all_sources))
+#         raise ValueError(msg)
 
 def get_data(dataset, update=False, directory=None):
     """
@@ -172,7 +225,7 @@ def get_data(dataset, update=False, directory=None):
     Parameters
     ----------
     dataset : str
-        The name of the dataset. Run ``pyrosm.data.available`` for
+        The name of the dataset. Run ``print_available_datasets`` for
         all available options.
 
     update : bool
@@ -193,18 +246,20 @@ def get_data(dataset, update=False, directory=None):
     elif dataset.replace(" ", "") in sources._all_sources:
         return retrieve(search_source(dataset.replace(" ", "")), update, directory)
 
-    # Users might pass country names without underscores (e.g. North America)
     elif dataset.replace(" ", "_") in sources._all_sources:
         return retrieve(search_source(dataset.replace(" ", "_")), update, directory)
 
-    # Users might pass country names with dashes instead of underscores (e.g. canary-islands)
     elif dataset.replace("-", "_") in sources._all_sources:
         return retrieve(search_source(dataset.replace("-", "_")), update, directory)
 
     else:
-        msg = "The dataset '{data}' is not available. ".format(data=dataset)
-        msg += "Available datasets are {}".format(", ".join(sources._all_sources))
-        raise ValueError(msg)
+        msg = "The dataset '{}' is not available. ".format(dataset)
+        msg+= "Available datasets are: "
+        print(msg)
+        # input("(Press Enter to continue...)")
+        # msg += "Available datasets are: {}".format(", ".join(sources._all_sources))    
+        # raise ValueError(msg)    
+        print_available_datasets()        
 
 ####### Test
 def download_file(url, save_to) :
@@ -237,9 +292,19 @@ def download_file(url, save_to) :
         print(filename, "has been downloaded to", save_to)
     #______________________________________________________________________________
 
-def main():
-    save_to = os.getcwd()
-    get_data("yemen", update=True,directory = save_to)
+def main():    
+    parser = argparse.ArgumentParser(description="Download OSM data by country/ region.")
+    parser.add_argument("dataset", type=str, help="The name of the countrty/ region to download.")   
+    args = parser.parse_args()
+    dataset = args.dataset
+    cur_dir = os.getcwd()
+    try:
+        get_data(dataset, update=True, directory=cur_dir)
+    except ValueError as e:
+        print(e)
+
+    # save_to = os.getcwd()
+    # get_data("yemen", update=True,directory = save_to)
     # print (available)
     # print (available.keys())
     # url = "https://github.com/udsleeds/openinfra/releases/download/v0.2/Leeds_06_06_22.osm.pbf"
