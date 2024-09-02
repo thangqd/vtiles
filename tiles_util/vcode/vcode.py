@@ -459,6 +459,41 @@ def children2geojson(vcode):
             geojson.dump(geojson_feature, file, indent=2)
         print(f"Saved {child_vcode} to {filename}")
 
+def vcode_parent(vcode):
+    """
+    Finds the parent tile of a given vcode at the current zoom level.
+
+    Args:
+        vcode (str): The tile code in the format 'zXxYyZ', where X, Y, and Z are integers.
+
+    Returns:
+        str: The vcode of the parent tile.
+    """
+    # Extract z, x, y from the vcode
+    match = re.match(r'z(\d+)x(\d+)y(\d+)', vcode)
+    if not match:
+        raise ValueError("Invalid vcode format. Expected format: 'zXxYyZ'")
+
+    # Convert matched groups to integers
+    z = int(match.group(1))
+    x = int(match.group(2))
+    y = int(match.group(3))
+
+    # Calculate the parent zoom level
+    if z == 0:
+        raise ValueError("No parent exists for zoom level 0.")
+
+    z_parent = z - 1
+
+    # Calculate the coordinates of the parent tile
+    x_parent = x // 2
+    y_parent = y // 2
+
+    # Format the parent tile's vcode
+    parent_vcode = f"z{z_parent}x{x_parent}y{y_parent}"
+
+    return parent_vcode
+
 def vcode_neighbors(vcode):
     """
     Finds the neighboring vcodes of a given vcode.
