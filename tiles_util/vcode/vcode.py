@@ -6,7 +6,6 @@ from shapely.ops import transform
 import pyproj
 from shapely.geometry import box, shape
 
-
 def vcode2zxy(vcode):
     """
     Parses a string formatted as 'zXxYyZ' to extract z, x, and y values.
@@ -417,7 +416,7 @@ def vcode2bound(vcode):
     # Return bounds as a list in [left, bottom, right, top] format
     return [bounds[0], bounds[1], bounds[2], bounds[3]]
 
-def vcode2wkt(vcode):
+def vcode2wktbound(vcode):
     """
     Converts a vcode (e.g., 'z23x6668288y3948543') to its bounding box in OGC WKT format using mercantile.
 
@@ -592,7 +591,7 @@ bound = vcode2bound(vcode)
 print("Bound:", bound)
 
 
-wkt = vcode2wkt(vcode)
+wkt = vcode2wktbound(vcode)
 print("vcode:", vcode)
 print("Bounding box (WKT):", wkt)
 zoom = 5  # Specify the zoom level
