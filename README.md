@@ -1,17 +1,17 @@
 # Vector Tiles Utilities
 # Repository Renamed
-**Note:** This repository has been renamed from `mbtiles-util` to `tiles-util`. Please update your references accordingly.
+**Note:** This repository has been renamed from `tiles-util` to `tiles-util`. Please update your references accordingly.
 
 ## Installation: 
 - Using pip install (Windows/ Linux):
     ``` bash 
     pip install tiles-util
     ```
-- Show information of installed mbtiles-util: 
+- Show information of installed tiles-util: 
     ``` bash 
     pip show tiles-util
     ```
-- Install the latest vertion of mbtiles-util:
+- Install the latest vertion of tiles-util:
     ``` bash 
     pip install tiles-util --upgrade
     ```
