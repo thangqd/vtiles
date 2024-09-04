@@ -108,7 +108,7 @@ def create_metadata(cursor, name, format, tms=0):
       ("minzoom", minzoom), 
       ("maxzoom", maxzoom), 
       ("desccription", 'MBTiles converted from a tiles folder using tiles-util'), 
-      ("attribution", '<a href="https://github.com/thangqd/tiles_util" target="_blank">&copy; tiles-util</a>'),
+      ("attribution", '<a href="https://github.com/thangqd/vtiles" target="_blank">&copy; tiles-util</a>'),
       ("type", ''),
       ("version", '1')
     ])

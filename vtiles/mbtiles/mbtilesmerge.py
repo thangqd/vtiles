@@ -343,7 +343,7 @@ def merge_mbtiles(input_mbtiles, output_mbtiles):
                 ''', (center_of_bound,))
 
             # Update description
-            description = 'Merge multiple MBTiles files into a single MBTiles file using mbtilesmerge from tiles_util'
+            description = 'Merge multiple MBTiles files into a single MBTiles file using mbtilesmerge from vtiles'
             cur_out.execute('''
                 INSERT OR REPLACE INTO metadata (name, value)
                 VALUES ('description', ?)

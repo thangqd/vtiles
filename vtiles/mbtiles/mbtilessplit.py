@@ -101,7 +101,7 @@ def process_mbtiles(input_mbtiles, output_mbtiles, layers_to_keep, keep_layers=T
                             except Exception as e:
                                 logging.error(f"Error encoding tile {zoom_level}/{tile_column}/{tile_row}: {e}")
                 
-                description = 'Splitting MBTiles file by selected layers using mbtilessplit from tiles_util'
+                description = 'Splitting MBTiles file by selected layers using mbtilessplit from vtiles'
                 cursor.execute('''
                     INSERT OR REPLACE INTO metadata (name, value)
                     VALUES ('description', ?)

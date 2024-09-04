@@ -1,4 +1,4 @@
-# Vector Tiles Utilities
+# VTiles - Vector Tiles Utilities
 # Repository Renamed
 **Note:** This repository has been renamed from `vtiles` to `vtiles`. Please update your references accordingly.
 

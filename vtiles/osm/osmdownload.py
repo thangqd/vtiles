@@ -95,7 +95,7 @@ def get_file_size(file_name, size_type=UNIT.MB):
 def download(url, filename, update, target_dir):
     if target_dir is None:
         temp_dir = tempfile.gettempdir()
-        target_dir = os.path.join(temp_dir, "tiles_util")
+        target_dir = os.path.join(temp_dir, "vtiles")
     else:
         if not os.path.isdir(target_dir):
             raise ValueError(f"The provided directory does not exist: " f"{target_dir}")
