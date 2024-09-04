@@ -1,22 +1,22 @@
 # Vector Tiles Utilities
 # Repository Renamed
-**Note:** This repository has been renamed from `tiles-util` to `tiles-util`. Please update your references accordingly.
+**Note:** This repository has been renamed from `vtiles` to `vtiles`. Please update your references accordingly.
 
 ## Installation: 
 - Using pip install (Windows/ Linux):
     ``` bash 
-    pip install tiles-util
+    pip install vtiles
     ```
-- Show information of installed tiles-util: 
+- Show information of installed vtiles: 
     ``` bash 
-    pip show tiles-util
+    pip show vtiles
     ```
-- Install the latest vertion of tiles-util:
+- Install the latest vertion of vtiles:
     ``` bash 
-    pip install tiles-util --upgrade
+    pip install vtiles --upgrade
     ```
     
-- Visit tiles-util on [PyPI](https://pypi.org/project/tiles-util/)
+- Visit vtiles on [PyPI](https://pypi.org/project/vtiles/)
 
 ## Usage:
 ### mbtilesinfo:
