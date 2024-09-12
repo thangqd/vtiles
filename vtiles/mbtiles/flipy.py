@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import os
-import fnmatch
 import shutil
 import sys
 import argparse
@@ -51,9 +50,9 @@ def convert_tms_to_xyz(inDIR, copyDIR):
 
 def main():
     # Get the command line arguments and set up some variables
-    parser = argparse.ArgumentParser(description='Convert a TMS directory structure (like one created with gdal2tiles) to a XYZ structure')
-    parser.add_argument('-i', type=str, help='The directory containing the TMS files')
-    parser.add_argument('-o', type=str, help='The output directory for the XYZ files')
+    parser = argparse.ArgumentParser(description='Convert TMS <--> XYZ tiling scheme for a tiles folder')
+    parser.add_argument('-i', type=str, help='input directorty')
+    parser.add_argument('-o', type=str, help='output directory')
     args = parser.parse_args()
     
     convert_tms_to_xyz(args.i, args.o)

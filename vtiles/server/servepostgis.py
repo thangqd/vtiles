@@ -7,7 +7,7 @@ import argparse
 
 # Argument parser for command-line arguments
 parser = argparse.ArgumentParser(description='Serve MVT tiles from a PostgreSQL/PostGIS database.')
-parser.add_argument('config_file', help='Path to the YAML configuration file')
+parser.add_argument('-config', help='Path to the YAML configuration file')
 args = parser.parse_args()
 
 # Load configuration from a YAML file

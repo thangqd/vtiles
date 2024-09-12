@@ -13,8 +13,8 @@ def tile_data_to_geojson(tile_data, x, y, z, layers):
 
     Args:
         tile_data (bytes): The binary tile data.
-        x (int): The x coordinate of the tile.
-        y (int): The y coordinate of the tile.
+        x (int): The tile column.
+        y (int): The tile row.
         z (int): The zoom level of the tile.
         layers (list): List of layer names to include in the output.
 
@@ -129,13 +129,13 @@ def main():
     """
     Main function to parse arguments and convert MBTiles to GeoJSON.
     """
-    parser = argparse.ArgumentParser(description='Convert Tile data from PBF file, MBTiles file, or URL to GeoJSON.')
-    parser.add_argument('-i', '--input', type=str, required=True, help='Input PBF file, MBTiles file, or URL')
+    parser = argparse.ArgumentParser(description='Convert MBTiles to GeoJSON.')
+    parser.add_argument('-i', '--input', type=str, required=True, help='Input MBTiles file')
     parser.add_argument('-o', '--output', type=str, required=True, help='Output GeoJSON file')
     parser.add_argument('-minzoom','--minzoom', type=int, required=True, help='Minimum tile zoom level')
     parser.add_argument('-maxzoom','--maxzoom', type=int, required=True, help='Maximum tile zoom level')
-    parser.add_argument('-flipy', '--flipy', type=int, choices=[0, 1], default=0, help='Use TMS (flip y) format (1 for True, 0 for False)')
-    parser.add_argument('-l', '--layers', type=str, nargs='*', help='List of layer names to filter')
+    parser.add_argument('-flipy', '--flipy', type=int, choices=[0, 1], default=0, help='TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0')
+    parser.add_argument('-l', '--layers', type=str, nargs='*', help='List of layer names to convert')
 
     args = parser.parse_args()
     

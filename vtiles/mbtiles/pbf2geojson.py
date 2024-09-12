@@ -20,14 +20,14 @@ def tile_data_to_geojson(tile_data, x, y, z, output):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Convert Tile data from BBF file, MBTiles file, or URL to GeoJSON.')
+    parser = argparse.ArgumentParser(description='Convert tile data from BBF file, MBTiles file, or URL to GeoJSON.')
     parser.add_argument('-i', '--input', type=str, required=True, help='Input PBF file, MBTiles file, or URL')
     parser.add_argument('-z', type=int, help='Tile zoom level')
-    parser.add_argument('-x', type=int, help='Tile x coordinate')
-    parser.add_argument('-y', type=int, help='Tile y coordinate')
+    parser.add_argument('-x', type=int, help='Tile column')
+    parser.add_argument('-y', type=int, help='Tile row')
     # parser.add_argument("-l", "--layer", help="include only the specified layer", type=str)
     parser.add_argument('-o', '--output', type=str, required=True, help='Output GeoJSON file')
-    parser.add_argument('-flipy', '--flipy', help='Use TMS (flip y) format: 1 or 0', type=int, choices=[0, 1],  default=0)
+    parser.add_argument('-flipy', '--flipy', type=int, choices=[0, 1], default=0, help='TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0')
 
     args = parser.parse_args()    
     tile_data,z,x,y = None,None,None,None

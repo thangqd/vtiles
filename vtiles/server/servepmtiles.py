@@ -18,7 +18,7 @@ def main():
     parser = argparse.ArgumentParser(description="HTTP server for PMTiles archives.")
     parser.add_argument("-i", help="PMTiles archive to serve")
     parser.add_argument("-port", help="Port to bind to")
-    parser.add_argument("--host", help="Address to bind server to: default localhost")
+    parser.add_argument("-host", help="Address to bind server to: default localhost")
     parser.add_argument(
         "--cors-allow-all",
         help="Return Access-Control-Allow-Origin:* header",

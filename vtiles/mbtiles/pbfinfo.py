@@ -39,7 +39,7 @@ def count_feature_types(layer_data):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python script.py <path_to_pbf_file>")
+        print("Usage: pbfinfo <path_to_pbf_file>")
         sys.exit(1)
 
     pbf_file = sys.argv[1]

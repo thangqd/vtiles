@@ -123,7 +123,7 @@ def main():
     parser = argparse.ArgumentParser(description="Split an MBTiles file by selected layers.")
     parser.add_argument("-i", "--input", required=True, help="Path to the input MBTiles file")
     parser.add_argument("-o", "--output", required=True, help="Path to the output MBTiles file")
-    parser.add_argument("-l", "--layers", nargs='+', required=True, help="Names of the layers to keep")
+    parser.add_argument("-l", "--layers", nargs='+', required=True, help="List of layer names to be splitted")
     args = parser.parse_args()
     
     process_mbtiles(args.input, args.output, args.layers, keep_layers=True)

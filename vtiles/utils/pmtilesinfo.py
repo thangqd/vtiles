@@ -4,8 +4,8 @@ import pprint
 from .pmtiles.reader import Reader, MmapSource
 
 def print_usage():
-    print("Usage: pmtiles-show PMTILES_FILE")
-    print("Usage: pmtiles-show PMTILES_FILE Z X Y")
+    print("Usage: pmtilesinfo PMTILES_FILE")
+    print("Usage: pmtilesinfo PMTILES_FILE Z X Y")
     exit(1)
 
 def main():

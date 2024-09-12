@@ -60,7 +60,7 @@ def folder2s3(input_folder, format='', bucket_name='', s3_prefix='', aws_access_
 
     try:
         logging.info(f'Uploading folder {input_folder} to S3 bucket: {bucket_name}. Press Ctrl+C to cancel')
-        if format == 'pbf':
+        if format == 'pbf' or format == 'mvt' :
             upload_files(bucket_name, input_folder, s3_prefix, 'application/x-protobuf', 'gzip')
         else:
             upload_files(bucket_name, input_folder, s3_prefix)
@@ -72,7 +72,7 @@ def folder2s3(input_folder, format='', bucket_name='', s3_prefix='', aws_access_
 def main():
     parser = argparse.ArgumentParser(description='Upload a tiles folder to S3.')
     parser.add_argument('-i', type=str, required=True, help='The tiles folder to upload.')
-    parser.add_argument('-format', type=str, required=True, choices=['pbf', 'png', 'jpg', 'jpeg', 'webp'], help='The format of the files to upload.')
+    parser.add_argument('-format', type=str, required=True, choices=['pbf', 'png', 'jpg', 'jpeg', 'webp', 'pbf', 'mvt'], help='format of the files to upload.')
     args = parser.parse_args()
 
     input_folder = args.i

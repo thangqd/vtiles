@@ -143,7 +143,7 @@ def main(mbtiles, s3_url, threads, extension, header, progress, debug):
                 raise Exception("Unsupported header")
             headers[k] = v
 
-    if extension == ".pbf":
+    if extension == ".pbf" or extension == ".mvt":
         headers.update(
             {
                 "Content-Encoding": "gzip",

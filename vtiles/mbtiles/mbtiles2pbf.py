@@ -28,8 +28,8 @@ def main():
     parser = argparse.ArgumentParser(description='Extract a tile from MBTiles to PBF.')
     parser.add_argument('-i', '--input', required=True, help='Input MBTiles file')
     parser.add_argument('-z', '--zoom', type=int, required=True, help='Zoom level')
-    parser.add_argument('-x', '--x', type=int, required=True, help='X coordinate')
-    parser.add_argument('-y', '--y', type=int, required=True, help='Y coordinate')
+    parser.add_argument('-x', '--x', type=int, required=True, help='tile column')
+    parser.add_argument('-y', '--y', type=int, required=True, help='tile row')
     parser.add_argument('-o', '--output', required=True, help='Output PBF file')
     
     args = parser.parse_args()

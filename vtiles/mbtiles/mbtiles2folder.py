@@ -81,9 +81,9 @@ def main():
     parser = argparse.ArgumentParser(description='Convert MBTiles file to folder')
     parser.add_argument('-i', required=True, help='Input MBTiles file name')
     parser.add_argument('-o', help='Output folder name (optional)')
-    parser.add_argument('-flipy', help='Use TMS (flip y) format: 1 or 0', type=int, default=0)
-    parser.add_argument('-minzoom', help='Minimum zoom level to export', type=int, default=0)
-    parser.add_argument('-maxzoom', help='Maximum zoom level to export', type=int, default=None)
+    parser.add_argument('-flipy',type=int, default=0, choices=[0, 1], help='TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0')
+    parser.add_argument('-minzoom', type=int, default=0, help='Min zoom to export (optional, default is 0)')
+    parser.add_argument('-maxzoom', type=int, default=None, help='Max zoom to export (optional, default is maxzoom from the input MBTiles)')
 
     args = parser.parse_args()
 

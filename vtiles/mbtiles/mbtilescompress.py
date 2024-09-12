@@ -75,7 +75,7 @@ def compress_mbtiles(input_mbtiles, output_mbtiles):
     conn.close()
    
 def main():
-    parser = argparse.ArgumentParser(description='Decompress an MBTiles file.')
+    parser = argparse.ArgumentParser(description='Compress MBTiles file with GZIP.')
     parser.add_argument('-i', '--input', required=True, help='Path to the input MBTiles file.')
     parser.add_argument('-o', '--output', required=True, help='Path to the output MBTiles file.')
 

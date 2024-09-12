@@ -189,9 +189,9 @@ def folder2mbtiles(input_folder, mbtiles_file, tms=0):
 def main():
   logging.basicConfig(level=logging.INFO, format='%(message)s')
   parser = argparse.ArgumentParser(description='Convert Tiles folder to MBTiles')
-  parser.add_argument('-i', help='Input folder')
-  parser.add_argument('-o', help='Output mbtiles file name (optional)', default=None)
-  parser.add_argument('-flipy', help='Use TMS (flip y) format: 1 or 0', type=int, default=0)
+  parser.add_argument('-i', required=True, help='Input folder')
+  parser.add_argument('-o', default=None, help='Output mbtiles file name (optional)')
+  parser.add_argument('-flipy', type=int, default=0,choices=[0, 1], help='TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0')
 
   args = parser.parse_args()
 
