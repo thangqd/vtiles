@@ -50,7 +50,8 @@ setup(
             'pbf2geojson = vtiles.mbtiles.pbf2geojson:main',
             'folder2s3 = vtiles.mbtiles.folder2s3:main',
             'flipy = vtiles.mbtiles.flipy:main',
-                                            
+            'url2folder = vtiles.mbtiles.url2folder:main',
+
             'servefolder= vtiles.server.servefolder:main',
             'servepostgis= vtiles.server.servepostgis:main',          
             'servembtiles=vtiles.server.servembtiles:main',    
@@ -61,6 +62,7 @@ setup(
             'pmtilesinfo = vtiles.utils.pmtilesinfo:main',
             'pmtiles2folder = vtiles.utils.pmtiles2folder:main',
             'pmtiles2mbtiles = vtiles.utils.pmtiles2mbtiles:main',           
+            'vtpk2folder=vtiles.utils.vtpk2folder:main',
             'centerline=vtiles.utils.centerline:main'
         ],
     },    
