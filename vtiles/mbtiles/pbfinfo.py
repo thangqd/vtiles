@@ -55,17 +55,17 @@ def main():
     print(f"File size: {file_size} bytes")
     print(f"Last modified: {last_modified_date}")
     print(f"Compression type: {compression_type}")
-    print (f"Decoded tile: {tile_data}")
     # Print layer information
-    # for layer_name, layer_data in tile_data.items():
-    #     num_features = len(layer_data['features'])
-    #     feature_types_count = count_feature_types(layer_data)
+    print("==============")
+    for layer_name, layer_data in tile_data.items():
+        num_features = len(layer_data['features'])
+        feature_types_count = count_feature_types(layer_data)
         
-    #     print(f"Layer '{layer_name}':")
-    #     print(f"  Total features: {num_features} features")
-    #     print("  Feature types:")
-    #     for feature_type, count in feature_types_count.items():
-    #         print(f"    {feature_type}: {count} features")
+        print(f"Layer '{layer_name}':")
+        print(f"  Total features: {num_features} features")
+        print("  Feature types:")
+        for feature_type, count in feature_types_count.items():
+            print(f"    {feature_type}: {count} features")
 
 if __name__ == "__main__":
     main()

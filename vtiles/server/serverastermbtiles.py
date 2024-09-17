@@ -1,46 +1,68 @@
+#!/usr/bin/env python3
+# Reference: https://github.com/monkut/servembtiles
+"""
+mbtiles WSGI application
+
+MBTiles is a specification for storing tiled map data in SQLite databases for immediate usage and for transfer.
+From:
+https://github.com/mapbox/mbtiles-spec
+"""
 import os
 import json
 import sqlite3
+import mimetypes
 import logging
 from wsgiref.util import shift_path_info
+from wsgiref.simple_server import make_server, WSGIServer
+from socketserver import ThreadingMixIn
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
-MBTILES_ABSPATH = None
-MBTILES_TILE_EXT = '.pbf'
-MBTILES_ZOOM_OFFSET = 0
-MBTILES_HOST = '0.0.0.0'
-MBTILES_PORT = 8005
-MBTILES_SERVE = True
-USE_OSGEO_TMS_TILE_ADDRESSING = True
+try:
+    from settings import MBTILES_ABSPATH, MBTILES_TILE_EXT, MBTILES_ZOOM_OFFSET, MBTILES_HOST, MBTILES_PORT, MBTILES_SERVE, USE_OSGEO_TMS_TILE_ADDRESSING
+except ImportError:
+    logger.warning("settings.py not set, may not be able to run via a web server (apache, nginx, etc)!")
+    MBTILES_ABSPATH = None
+    MBTILES_TILE_EXT = '.png'
+    MBTILES_ZOOM_OFFSET = 0
+    MBTILES_HOST = ''
+    MBTILES_PORT = 8005
+    MBTILES_SERVE = False
+    USE_OSGEO_TMS_TILE_ADDRESSING = True
 
-# Supported image extensions for vector tiles
-SUPPORTED_IMAGE_EXTENSIONS = ('.pbf',)
+SUPPORTED_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg")
+
 
 class MBTilesFileNotFound(Exception):
     pass
 
+
 class InvalidImageExtension(Exception):
     pass
 
+
 class MBTilesApplication:
     """
-    Serves vector tiles within the given .mbtiles (sqlite3) file
+    Serves rendered tiles within the given .mbtiles (sqlite3) file defined in settings.MBTILES_ABSPATH
+
+    Refer to the MBTiles specification at:
+    https://github.com/mapbox/mbtiles-spec
     """
-    def __init__(self, mbtiles_filepath, tile_image_ext='.pbf', zoom_offset=0):
+
+    def __init__(self, mbtiles_filepath, tile_image_ext='.png', zoom_offset=0):
         if mbtiles_filepath is None or not os.path.exists(mbtiles_filepath):
             raise MBTilesFileNotFound(mbtiles_filepath)
 
         if tile_image_ext not in SUPPORTED_IMAGE_EXTENSIONS:
-            raise InvalidImageExtension(f"{tile_image_ext} not in {SUPPORTED_IMAGE_EXTENSIONS}!")
+            raise InvalidImageExtension("{} not in {}!".format(tile_image_ext, SUPPORTED_IMAGE_EXTENSIONS))
 
         self.mbtiles_db = sqlite3.connect(
-            f"file:{mbtiles_filepath}?mode=ro",
+            "file:{}?mode=ro".format(mbtiles_filepath),
             check_same_thread=False, uri=True)
         self.tile_image_ext = tile_image_ext
-        self.tile_content_type = 'application/x-protobuf'
-        # self.tile_content_encoding = 'gzip'
+        self.tile_content_type = mimetypes.types_map[tile_image_ext.lower()]
         self.zoom_offset = zoom_offset
         self.maxzoom = None
         self.minzoom = None
@@ -51,8 +73,10 @@ class MBTilesApplication:
         """
         Query the metadata table and obtain max/min zoom levels,
         setting to self.minzoom, self.maxzoom as integers
+        :return: None
         """
         query = 'SELECT name, value FROM metadata WHERE name="minzoom" OR name="maxzoom";'
+        # add maxzoom, minzoom to instance
         for name, value in self.mbtiles_db.execute(query):
             setattr(self, name.lower(), max(int(value) - self.zoom_offset, 0))
 
@@ -61,31 +85,34 @@ class MBTilesApplication:
             uri_field_count = len(environ['PATH_INFO'].split('/'))
             base_uri = shift_path_info(environ)
 
+            # handle 'metadata' requests
             if base_uri == 'metadata':
                 query = 'SELECT * FROM metadata;'
-                try:
-                    metadata_results = self.mbtiles_db.execute(query).fetchall()
+                metadata_results = self.mbtiles_db.execute(query).fetchall()
+                if metadata_results:
                     status = '200 OK'
                     response_headers = [('Content-type', 'application/json')]
                     start_response(status, response_headers)
                     json_result = json.dumps(metadata_results, ensure_ascii=False)
-                    return [json_result.encode("utf8"), ]
-                except sqlite3.Error as e:
-                    logger.error(f"Database error: {e}")
-                    status = '500 Internal Server Error'
+                    return [json_result.encode("utf8"),]
+                else:
+                    status = '404 NOT FOUND'
                     response_headers = [('Content-type', 'text/plain; charset=utf-8')]
                     start_response(status, response_headers)
-                    return [b'Internal Server Error'].encode('utf8')
+                    return ['"metadata" not found in configured .mbtiles file!'.encode('utf8'), ]
 
-            elif uri_field_count >= 3:  # Expect: zoom, x & y
+            # handle tile request
+            elif uri_field_count >= 3:  # expect:  zoom, x & y
                 try:
                     zoom = int(base_uri)
                     if None not in (self.minzoom, self.maxzoom) and not (self.minzoom <= zoom <= self.maxzoom):
                         status = "404 Not Found"
                         response_headers = [('Content-type', 'text/plain; charset=utf-8')]
                         start_response(status, response_headers)
-                        return [f'Requested zoomlevel({zoom}) Not Available! Valid range minzoom({self.minzoom}) maxzoom({self.maxzoom}) PATH_INFO: {environ["PATH_INFO"]}'.encode('utf8')]
-
+                        return ['Requested zoomlevel({}) Not Available! Valid range minzoom({}) maxzoom({}) PATH_INFO: {}'.format(zoom,
+                                                                                                                                   self.minzoom,
+                                                                                                                                   self.maxzoom,
+                                                                                                                                   environ['PATH_INFO']).encode('utf8')]
                     zoom += self.zoom_offset
                     x = int(shift_path_info(environ))
                     y, ext = shift_path_info(environ).split('.')
@@ -94,37 +121,33 @@ class MBTilesApplication:
                     status = "400 Bad Request"
                     response_headers = [('Content-type', 'text/plain; charset=utf-8')]
                     start_response(status, response_headers)
-                    return [f'Unable to parse PATH_INFO({environ["PATH_INFO"]}), expecting "z/x/y.pbf"'.encode('utf8'), ' '.join(i for i in e.args).encode('utf8')]
+                    return ['Unable to parse PATH_INFO({}), expecting "z/x/y.(png|jpg)"'.format(environ['PATH_INFO']).encode('utf8'), ' '.join(i for i in e.args).encode('utf8')]
 
                 query = 'SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?;'
-                ymax = 1 << zoom
-                y = ymax - y - 1
+                if not USE_OSGEO_TMS_TILE_ADDRESSING:
+                    # adjust y to use XYZ google addressing
+                    ymax = 1 << zoom
+                    y = ymax - y - 1
                 values = (zoom, x, y)
-                try:
-                    tile_results = self.mbtiles_db.execute(query, values).fetchone()
-                    if tile_results:
-                        tile_data = tile_results[0]
-                        status = '200 OK'
-                        response_headers = [('Content-type', self.tile_content_type),]
-                                            #  ('Content-Encoding', self.tile_content_encoding)]
-                        start_response(status, response_headers)
-                        return [tile_data]
-                    else:
-                        status = '404 NOT FOUND'
-                        response_headers = [('Content-type', 'text/plain; charset=utf-8')]
-                        start_response(status, response_headers)
-                        return [f'No data found for request location: {environ["PATH_INFO"]}'.encode('utf8')]
-                except sqlite3.Error as e:
-                    logger.error(f"Database error: {e}")
-                    status = '500 Internal Server Error'
+                tile_results = self.mbtiles_db.execute(query, values).fetchone()
+
+                if tile_results:
+                    tile_result = tile_results[0]
+                    status = '200 OK'
+                    response_headers = [('Content-type', self.tile_content_type)]
+                    start_response(status, response_headers)
+                    return [tile_result,]
+                else:
+                    status = '404 NOT FOUND'
                     response_headers = [('Content-type', 'text/plain; charset=utf-8')]
                     start_response(status, response_headers)
-                    return [b'Internal Server Error'].encode('utf8')
+                    return ['No data found for request location: {}'.format(environ['PATH_INFO']).encode('utf8')]
 
         status = "400 Bad Request"
         response_headers = [('Content-type', 'text/plain; charset=utf-8')]
         start_response(status, response_headers)
-        return [b'request URI not in expected: ("metadata", "/z/x/y.pbf")']
+        return ['request URI not in expected: ("metadata", "/z/x/y.png")'.encode('utf8'), ]
+
 
 def main():
     import argparse
@@ -154,7 +177,7 @@ def main():
     args.filepath = os.path.abspath(args.filepath)
 
     if args.serve:
-        # Configure logging
+        # create console handler and set level to debug
         console = logging.StreamHandler()
         console.setLevel(logging.DEBUG)
         formatter = logging.Formatter('%(asctime)s - %(module)s - %(levelname)s - %(message)s')
@@ -167,22 +190,18 @@ def main():
         logger.info("ADDRESS : {}".format(args.address))
         logger.info("PORT    : {}".format(args.port))
 
-        # Start WSGI server
-        from wsgiref.simple_server import make_server, WSGIServer
-        from socketserver import ThreadingMixIn
+        class ThreadingWSGIServer(ThreadingMixIn, WSGIServer): pass
 
-        class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
-            pass
-
-        httpd = make_server(args.address, args.port, MBTilesApplication(args.filepath, args.ext, args.zoom_offset), ThreadingWSGIServer)
-        logger.info("Serving on {}:{}".format(args.address, args.port))
+        mbtiles_app = MBTilesApplication(mbtiles_filepath=args.filepath, tile_image_ext=args.ext, zoom_offset=args.zoom_offset)
+        server = make_server(args.address, args.port, mbtiles_app, ThreadingWSGIServer)
         try:
-            httpd.serve_forever()
+            server.serve_forever()
         except KeyboardInterrupt:
-            logger.info("Stopping server...")
-            httpd.server_close()
+            logger.info("stopped.")
     else:
-        logger.info("Webserver NOT started.")
+        logger.warning("'--serve' option not given!")
+        logger.warning("\tRun with the '--serve' option to serve tiles with the test server.")
+
 
 if __name__ == '__main__':
     main()

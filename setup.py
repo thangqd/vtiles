@@ -51,10 +51,13 @@ setup(
             'folder2s3 = vtiles.mbtiles.folder2s3:main',
             'flipy = vtiles.mbtiles.flipy:main',
             'url2folder = vtiles.mbtiles.url2folder:main',
+            'mbtilesinspect = vtiles.mbtiles.mbtilesinspect:main',
+
 
             'servefolder= vtiles.server.servefolder:main',
             'servepostgis= vtiles.server.servepostgis:main',          
             'servembtiles=vtiles.server.servembtiles:main',    
+            'serverastermbtiles=vtiles.server.serverastermbtiles:main',
             'servevectormbtiles=vtiles.server.servevectormbtiles:main',       
             'servepmtiles=vtiles.server.servepmtiles:main',                   
             

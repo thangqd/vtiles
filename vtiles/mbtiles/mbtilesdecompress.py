@@ -35,7 +35,7 @@ def decompress_mbtiles(input_mbtiles, output_mbtiles):
         # Create a new table named tiles_new
         cursor.execute("CREATE TABLE tiles_new (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB)")
         
-        # Select data from the view
+        # Select data from tiles view
         cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles order by zoom_level")
         rows = cursor.fetchall()
         
@@ -53,7 +53,7 @@ def decompress_mbtiles(input_mbtiles, output_mbtiles):
         # Drop the view and rename the new table to tiles
         cursor.execute("DROP VIEW tiles")
         cursor.execute("ALTER TABLE tiles_new RENAME TO tiles")
-        cursor.execute("CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row)")
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row)")
     else:
         # Decompress tile data in the existing tiles table
         cursor.execute("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles order by zoom_level")
