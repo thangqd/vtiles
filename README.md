@@ -152,7 +152,7 @@
 
 ### MBTILES Server Utilities:
 #### servefolder
-- Serve a raster tiles or vector tiles for the current folder, so clients can access to the tiles server via, for ex. htttp://localhost/8000/tiles/z/x/y.pbf.
+- Serve a raster tiles or vector tiles for the current folder, so clients can access to the tiles server via, for ex. htttp://localhost/8000/tiles/{z}/{x}/{y}.pbf.
   ``` bash 
     > servefolder
   ```

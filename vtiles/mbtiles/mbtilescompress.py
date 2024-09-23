@@ -4,11 +4,11 @@ import gzip, zlib
 import logging
 import shutil
 from tqdm import tqdm
-from vtiles.mbtiles import mbtilesfixmeta
+from vtiles.mbtiles import mbtilesfixmeta, mbtilesdelduplicate
 
 def compress_tile_data(tile_data):
     try: 
-        if tile_data[:2] != b'\x1f\x8b':  # check if GZIP    
+        if tile_data[:2] != b'\x1f\x8b':  # check if not GZIP    
             if tile_data[:2] == b'\x78\x9c' or tile_data[:2] == b'\x78\x01' or tile_data[:2] == b'\x78\xda': # Check if ZLIB
                 tile_data = zlib.decompress(tile_data)           
             tile_data = gzip.compress(tile_data)
@@ -18,10 +18,10 @@ def compress_tile_data(tile_data):
     return tile_data          
 
 def compress_mbtiles(input_mbtiles, output_mbtiles):
-    if os.path.exists(output_mbtiles):
-        os.remove(output_mbtiles)
-    shutil.copyfile(input_mbtiles, output_mbtiles)
-
+    # if os.path.exists(output_mbtiles):
+    #     os.remove(output_mbtiles)
+    # shutil.copyfile(input_mbtiles, output_mbtiles)
+    mbtilesdelduplicate.remove_duplicates(input_mbtiles,output_mbtiles)
     # Open the copied MBTiles file
     conn = sqlite3.connect(output_mbtiles)
     cursor = conn.cursor()

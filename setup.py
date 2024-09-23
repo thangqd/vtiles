@@ -50,8 +50,10 @@ setup(
             'pbf2geojson = vtiles.mbtiles.pbf2geojson:main',
             'folder2s3 = vtiles.mbtiles.folder2s3:main',
             'flipy = vtiles.mbtiles.flipy:main',
+            
             'url2folder = vtiles.mbtiles.url2folder:main',
             'mbtilesinspect = vtiles.mbtiles.mbtilesinspect:main',
+            'mbtilesdelduplicate = vtiles.mbtiles.mbtilesdelduplicate:main',           
 
 
             'servefolder= vtiles.server.servefolder:main',

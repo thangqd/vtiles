@@ -5,6 +5,7 @@ import gzip
 import logging
 import shutil
 from tqdm import tqdm
+from vtiles.mbtiles import mbtilesfixmeta, mbtilesdelduplicate
 
 def decompress_tile_data(tile_data):
     try:
@@ -18,10 +19,7 @@ def decompress_tile_data(tile_data):
     return tile_data          
 
 def decompress_mbtiles(input_mbtiles, output_mbtiles):
-    if os.path.exists(output_mbtiles):
-        os.remove(output_mbtiles)
-    # Copy the original MBTiles file to the output path
-    shutil.copyfile(input_mbtiles, output_mbtiles)
+    mbtilesdelduplicate.remove_duplicates(input_mbtiles,output_mbtiles)
 
     # Open the copied MBTiles file
     conn = sqlite3.connect(output_mbtiles)

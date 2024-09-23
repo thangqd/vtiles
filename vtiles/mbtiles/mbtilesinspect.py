@@ -44,9 +44,8 @@ def check_tile_format(tile_data):
     """Check the format of the tile data and print whether it is compressed."""
     if tile_data:
         try:
-            decompressed_data, compression_type = decompress_tile_data(tile_data)
-            print(f"Tile data compression type: {compression_type}")
-            
+            decompressed_data, compression_type = decompress_tile_data(tile_data)  
+            print(f"Compression type: {compression_type}")                  
             with BytesIO(decompressed_data) as buf:
                 try:
                     # Attempt to open as an image (for raster tiles)
@@ -56,7 +55,7 @@ def check_tile_format(tile_data):
                     try:
                         # Attempt to decode as vector tile (for vector tiles)
                         decode(decompressed_data)
-                        return "Vector Tile (Mapbox Vector Tile)"
+                        return "Vector Tile"
                     except Exception as e:
                         return f"Error identifying format: {e}"
         except Exception as e:
