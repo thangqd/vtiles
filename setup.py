@@ -8,7 +8,7 @@ requirements = [
     'boto3~=1.34.72',
     'requests~=2.31.0',
     'click~=8.1.7',
-    'fiona~=1.9.4',
+    'fiona~=1.10.0',
     'shapely~=2.0.1',
     'osmium~=3.7.0',
     'protobuf~=5.26.1'
@@ -16,7 +16,7 @@ requirements = [
 
 setup(
     name='vtiles',
-    version='1.0.0',
+    version='1.0.1',
     author = 'Thang Quach',
     author_email= 'quachdongthang@gmail.com',
     url='https://github.com/thangqd/vtiles',
