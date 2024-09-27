@@ -144,6 +144,17 @@ def check_vector(input_mbtiles):
         conn.close()
         return False, compression_type
 
+def count_tiles(mbtiles):
+    """Count the number of tiles in the MBTiles file."""
+    num_tiles = None
+    connection = sqlite3.connect(mbtiles)
+    cursor = connection.cursor()
+    cursor.execute("SELECT COUNT(*) FROM tiles")
+    num_tiles = cursor.fetchone()[0]   
+    cursor.close()
+    connection.close()    
+    return num_tiles
+
 def get_zoom_levels(input_mbtiles):
     conn = sqlite3.connect(input_mbtiles)
     cursor = conn.cursor()

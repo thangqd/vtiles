@@ -1,112 +1,47 @@
 import sqlite3, json
 import os, sys, datetime
-
-# Check if mbtiles is vector or raster
-def check_vector(input_mbtiles):    
-    connection = sqlite3.connect(input_mbtiles)
-    cursor = connection.cursor()
-    cursor.execute("SELECT value FROM metadata WHERE name='format'")
-    format_info = cursor.fetchone()
-    # Close the database connection
-    cursor.close()
-    connection.close()    
-
-    # Check if format_info is not None
-    if format_info:
-        format_value = format_info[0].lower()
-        if 'pbf' in format_value or 'vector' in format_value:
-            return 1
-        elif 'png' in format_value or 'jpg' in format_value or 'webp' in format_value or 'raster' in format_value:
-            return 0
-        else:
-            return -1
+from vtiles.utils.geopreocessing import check_vector,count_tiles
 
 # Read vector metadata
-def read_vector_metadata(input_mbtiles):
-    """Read metadata from vector MBTiles file."""
-    connection = sqlite3.connect(input_mbtiles)
-    cursor = connection.cursor()
-    
-    # Extract metadata
-    # cursor.execute("SELECT name, value FROM metadata where name <>'json'")
-    cursor.execute("SELECT name, value FROM metadata where name <> 'json'")
-    metadata = dict(cursor.fetchall())
-    
-    cursor.close()
-    connection.close()
-    
-    return metadata
+def read_vector_metadata(mbtiles):
+    try:
+        """Read metadata from vector MBTiles file."""
+        connection = sqlite3.connect(mbtiles)
+        cursor = connection.cursor()
+        # Extract metadata
+        # cursor.execute("SELECT name, value FROM metadata where name <>'json'")
+        cursor.execute("SELECT name, value FROM metadata where name <> 'json'")
+        metadata = dict(cursor.fetchall())     
+        return metadata
+    except sqlite3.Error as e:
+            print(f"error reading metadata: {e}")
+            print(f"Please use mbtilesfixmeta to create metadata or use mbtilesinspect")
+            return None
+    finally:
+        cursor.close()
+        connection.close()  
 
 # Read raster metadata
-def read_raster_metadata(input_mbtiles):
-    """Read metadata from raster MBTiles file."""
-    connection = sqlite3.connect(input_mbtiles)
-    cursor = connection.cursor()
-    
-    # Extract metadata
-    cursor.execute("SELECT name, value FROM metadata")
-    metadata = dict(cursor.fetchall())
-    
-    cursor.close()
-    connection.close()
-    
-    return metadata
-
-def count_tiles(input_mbtiles):
-    """Count the number of tiles in the MBTiles file."""
-    num_tiles = None
-    connection = sqlite3.connect(input_mbtiles)
-    cursor = connection.cursor()
-    cursor.execute("SELECT COUNT(*) FROM tiles")
-    num_tiles = cursor.fetchone()[0]
-    # cursor.execute("SELECT type FROM sqlite_master WHERE name='tiles'")
-    # # Fetch the result
-    # table_or_view = cursor.fetchone()[0]
-    # if table_or_view == 'table':
-    #     # Count the number of tiles
-    #     cursor.execute("SELECT COUNT(*) FROM tiles")
-    #     num_tiles = cursor.fetchone()[0]
-   
-    # # in case the tiles view join 2 tables 'images' and 'map' may have greater number of tiles than actual
-    # elif table_or_view == 'view':
-    #     cursor.execute("""SELECT COUNT(DISTINCT CONCAT(
-	# 		CAST(zoom_level  AS TEXT), '|', 
-	# 		CAST(tile_column  AS TEXT) , '|', CAST(tile_row  AS TEXT)
-	# 		))
-    #         FROM tiles""")
-    #     num_tiles = cursor.fetchone()[0]
-    
-    cursor.close()
-    connection.close()
-    
-    return num_tiles
+def read_raster_metadata(mbtiles):
+    try:
+        """Read metadata from raster MBTiles file."""
+        connection = sqlite3.connect(mbtiles)
+        cursor = connection.cursor()
+        # Extract metadata
+        cursor.execute("SELECT name, value FROM metadata")
+        metadata = dict(cursor.fetchall())
+        return metadata
+    except sqlite3.Error as e:
+        print(f"error reading metadata: {e}")
+        print(f"Please use mbtilesfixmeta to create metadata or use mbtilesinspect")
+        return None
+    finally:
+        cursor.close()
+        connection.close() 
 
 # list all vector layers
-def read_vector_layers_old(input_mbtiles):    
-    connection = sqlite3.connect(input_mbtiles)
-    cursor = connection.cursor()
-    cursor.execute("SELECT name, value FROM metadata where name = 'json'")
-    row = cursor.fetchone()
-    if row is not None:
-        json_content = row[1]
-        layers_json = json.loads(json_content)
-        if "vector_layers" in layers_json:
-            vector_layers = layers_json["vector_layers"]
-            print("######:")
-            print("Vector layers:")
-            for index, layer in enumerate(vector_layers):
-                row_index = index + 1
-                layer_id = layer["id"]
-                print(f"{row_index}: {layer_id}")
-                # Additional information printing here if needed
-        else:
-            print("######:")
-            print("No 'vector_layers' found in metadata.")
-    else:
-        return
-
-def read_vector_layers(input_mbtiles):    
-    connection = sqlite3.connect(input_mbtiles)
+def read_vector_layers(mbtiles):    
+    connection = sqlite3.connect(mbtiles)
     cursor = connection.cursor()
     
     # Fetch the JSON from the metadata
@@ -170,42 +105,45 @@ def read_vector_layers(input_mbtiles):
         #                     print(f"      Type: {attr_type}")
         #                     print(f"      Values: {attr_values}")
         #                     print(" ")            
+    cursor.close()
     connection.close()
-
    
 def main():
     if len(sys.argv) != 2:
-      print("Please provide the mbtiles input filename.")
+      print("Please provide MBTiles input filename.")
       return
-    input_mbtiles = sys.argv[1]
-    file_stat = os.stat(input_mbtiles)
+    mbtiles = sys.argv[1]
+    file_stat = os.stat(mbtiles)
     file_size_mb = round(file_stat.st_size / (1024 * 1024),2)
     # file_created = datetime.datetime.fromtimestamp(file_stat.st_ctime).strftime("%Y-%m-%d %I:%M:%S %p")
     file_last_modified = datetime.datetime.fromtimestamp(file_stat.st_mtime).strftime("%Y-%m-%d %I:%M:%S %p")
-    # file_size = os.path.getsize(input_mbtiles)
+    # file_size = os.path.getsize(mbtiles)
     # file_size_mb = round(file_size / (1024 * 1024),2)
     print('######')
     print("File size: ", file_size_mb, 'MB')
     # print("Date created: ", file_created)
     print("Last modified: ", file_last_modified)
-    if (os.path.exists(input_mbtiles)):
-        if check_vector(input_mbtiles) == 1: # vector
-            metadata = read_vector_metadata(input_mbtiles)
-            num_tiles = count_tiles(input_mbtiles)
-            print("######")
-            print("Metadata:")
-            for key, value in metadata.items():
-                print(f"{key}: {value}")
+    if (os.path.exists(mbtiles)):
+        is_vector, _ = check_vector(mbtiles) 
+        num_tiles = count_tiles(mbtiles)
+        if is_vector: # vector
+            metadata = read_vector_metadata(mbtiles)
+            if metadata:      
+                print("######")
+                print("Metadata:")
+                for key, value in metadata.items():
+                    print(f"{key}: {value}")
+                read_vector_layers(mbtiles)
             print('######')
             print(f"Total number of tiles: {num_tiles}")
-            read_vector_layers(input_mbtiles)
-        
+            
         else:
-            metadata = read_raster_metadata(input_mbtiles)
-            num_tiles = count_tiles(input_mbtiles)
-            print("###### Metadata:")
-            for key, value in metadata.items():
-                print(f"{key}: {value}")
+            metadata = read_raster_metadata(mbtiles)   
+            if metadata:         
+                print("###### Metadata:")
+                for key, value in metadata.items():
+                    print(f"{key}: {value}")
+            print("######")
             print(f"Total number of tiles: {num_tiles}")
     else: 
         print ('MBTiles file does not exist!. Please recheck and input a correct file path.')

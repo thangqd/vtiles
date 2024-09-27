@@ -34,28 +34,29 @@ setup(
             'osmpub = vtiles.osm.osmpub:main',
             
             'mbtilesinfo = vtiles.mbtiles.mbtilesinfo:main',
+            'mbtilesinspect = vtiles.mbtiles.mbtilesinspect:main',
+            'mbtilesdelduplicate = vtiles.mbtiles.mbtilesdelduplicate:main',           
+
             'mbtiles2folder = vtiles.mbtiles.mbtiles2folder:main',
-            'mbtiles2pmtiles = vtiles.mbtiles.mbtiles2pmtiles:main',
-            'mbtiles2s3 = vtiles.mbtiles.mbtiles2s3:main',     
+            'folder2mbtiles = vtiles.mbtiles.folder2mbtiles:main',
+            'url2folder = vtiles.mbtiles.url2folder:main',   
             'mbtiles2geojson = vtiles.mbtiles.mbtiles2geojson:main',
+            'geojson2mbtiles = vtiles.mbtiles.geojson2mbtiles:main',                   
+            'mbtiles2s3 = vtiles.mbtiles.mbtiles2s3:main',        
+            'folder2s3 = vtiles.mbtiles.folder2s3:main',         
             'mbtiles2pbf = vtiles.mbtiles.mbtiles2pbf:main',
+
             'mbtilessplit = vtiles.mbtiles.mbtilessplit:main',
             'mbtilesmerge = vtiles.mbtiles.mbtilesmerge:main',
             'mbtilesdecompress = vtiles.mbtiles.mbtilesdecompress:main',
             'mbtilescompress = vtiles.mbtiles.mbtilescompress:main',
             'mbtilesfixmeta = vtiles.mbtiles.mbtilesfixmeta:main',
-            'geojson2mbtiles = vtiles.mbtiles.geojson2mbtiles:main',                   
-            'folder2mbtiles = vtiles.mbtiles.folder2mbtiles:main',  
+           
             'pbfinfo = vtiles.mbtiles.pbfinfo:main',
-            'pbf2geojson = vtiles.mbtiles.pbf2geojson:main',
-            'folder2s3 = vtiles.mbtiles.folder2s3:main',
-            'flipy = vtiles.mbtiles.flipy:main',
+            'pbf2geojson = vtiles.mbtiles.pbf2geojson:main',      
+            'flipy = vtiles.mbtiles.flipy:main',   
+            'mbtiles2pmtiles = vtiles.mbtiles.mbtiles2pmtiles:main',         
             
-            'url2folder = vtiles.mbtiles.url2folder:main',
-            'mbtilesinspect = vtiles.mbtiles.mbtilesinspect:main',
-            'mbtilesdelduplicate = vtiles.mbtiles.mbtilesdelduplicate:main',           
-
-
             'servefolder= vtiles.server.servefolder:main',
             'servepostgis= vtiles.server.servepostgis:main',          
             'servembtiles=vtiles.server.servembtiles:main',    

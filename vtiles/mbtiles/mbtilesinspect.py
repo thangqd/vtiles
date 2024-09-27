@@ -6,10 +6,9 @@ from vtiles.utils.mapbox_vector_tile import decode
 import gzip
 import zlib
 
-
-def get_sample_tile_data(db_path):
+def get_sample_tile_data(mbtiles):
     """Retrieve a sample tile data from the tiles table."""
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(mbtiles)
     cursor = conn.cursor()
 
     query = "SELECT tile_data FROM tiles LIMIT 1;"
@@ -69,9 +68,9 @@ def get_standard_tile_count(zoom_level):
     num_tiles_per_side = 2 ** zoom_level
     return num_tiles_per_side * num_tiles_per_side
 
-def count_tiles_for_each_zoom(db_path):
+def count_tiles_for_each_zoom(mbtiles):
     """Count the number of tiles for each zoom level in the tiles table."""
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(mbtiles)
     cursor = conn.cursor()
 
     query = """
@@ -87,9 +86,9 @@ def count_tiles_for_each_zoom(db_path):
     conn.close()
     return results
 
-def find_duplicates(db_path):
-    """Find duplicate rows in the tiles table based on zoom_level, tile_column, and tile_row."""
-    conn = sqlite3.connect(db_path)
+def find_duplicates(mbtiles):
+    """Find duplicate rows in the tiles table and calculate the total number of duplicates."""
+    conn = sqlite3.connect(mbtiles)
     cursor = conn.cursor()
 
     query = """
@@ -99,21 +98,44 @@ def find_duplicates(db_path):
     HAVING COUNT(*) > 1
     ORDER BY count;
     """
-
+    
     cursor.execute(query)
     duplicates = cursor.fetchall()
 
-    conn.close()
-    return duplicates
-
-def count_total_duplicates(duplicates):
-    """Calculate the total number of duplicate rows."""
+    # Calculate the total number of duplicate rows
     total_duplicates = sum(count - 1 for _, _, _, count in duplicates)
-    return total_duplicates
 
-def get_min_zoom_level(db_path):
+    conn.close()
+    
+    return duplicates, total_duplicates
+
+# def find_duplicates(mbtiles):
+#     """Find duplicate rows in the tiles table based on zoom_level, tile_column, and tile_row."""
+#     conn = sqlite3.connect(mbtiles)
+#     cursor = conn.cursor()
+
+#     query = """
+#     SELECT zoom_level, tile_column, tile_row, COUNT(*) AS count
+#     FROM tiles
+#     GROUP BY zoom_level, tile_column, tile_row
+#     HAVING COUNT(*) > 1
+#     ORDER BY count;
+#     """
+
+#     cursor.execute(query)
+#     duplicates = cursor.fetchall()
+
+#     conn.close()
+#     return duplicates
+
+# def count_total_duplicates(duplicates):
+#     """Calculate the total number of duplicate rows."""
+#     total_duplicates = sum(count - 1 for _, _, _, count in duplicates)
+#     return total_duplicates
+
+def get_min_zoom_level(mbtiles):
     """Get the minimum zoom level from the tiles table."""
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(mbtiles)
     cursor = conn.cursor()
 
     query = "SELECT MIN(zoom_level) FROM tiles;"
@@ -123,9 +145,9 @@ def get_min_zoom_level(db_path):
     conn.close()
     return min_zoom
 
-def get_max_zoom_level(db_path):
+def get_max_zoom_level(mbtiles):
     """Get the maximum zoom level from the tiles table."""
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(mbtiles)
     cursor = conn.cursor()
 
     query = "SELECT MAX(zoom_level) FROM tiles;"
@@ -135,9 +157,9 @@ def get_max_zoom_level(db_path):
     conn.close()
     return max_zoom
 
-def count_total_tiles(db_path):
+def count_total_tiles(mbtiles):
     """Calculate the total number of tiles in the tiles table."""
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(mbtiles)
     cursor = conn.cursor()
 
     query = "SELECT COUNT(*) FROM tiles;"
@@ -149,24 +171,24 @@ def count_total_tiles(db_path):
 
 def main():
     parser = argparse.ArgumentParser(description='Analyze an MBTiles file for tile counts and duplicates.')
-    parser.add_argument('db_path', type=str, help='Path to the MBTiles database file.')
+    parser.add_argument('mbtiles', type=str, help='Path to the MBTiles database file.')
 
     args = parser.parse_args()
 
-    db_path = args.db_path
+    mbtiles = args.mbtiles
 
     # Retrieve a sample tile data
-    tile_data = get_sample_tile_data(db_path)
+    tile_data = get_sample_tile_data(mbtiles)
     
     # Get the tile counts for each zoom level
-    tile_counts = count_tiles_for_each_zoom(db_path)
+    tile_counts = count_tiles_for_each_zoom(mbtiles)
     
     # Get min and max zoom levels
-    min_zoom_level = get_min_zoom_level(db_path)
-    max_zoom_level = get_max_zoom_level(db_path)
+    min_zoom_level = get_min_zoom_level(mbtiles)
+    max_zoom_level = get_max_zoom_level(mbtiles)
     
     # Get total number of tiles
-    total_tiles = count_total_tiles(db_path)
+    total_tiles = count_total_tiles(mbtiles)
     
     print(f"Min Zoom Level: {min_zoom_level}")
     print(f"Max Zoom Level: {max_zoom_level}")
@@ -186,21 +208,15 @@ def main():
         print(f"{zoom_level:<12} {actual_tile_count:<20} {standard_tile_count:<20} {matches_standard}")
 
     # Find duplicates
-    duplicates = find_duplicates(db_path)
-    
-    # Calculate and print total number of duplicate rows
-    total_duplicates = count_total_duplicates(duplicates)
+    duplicates, total_duplicates= find_duplicates(mbtiles)
     
     # Print duplicates
-    print("\nDuplicate Rows:")
     print(f"Total number of duplicate rows: {total_duplicates}")
-    if duplicates:
+    if total_duplicates>0:
         print(f"{'Zoom Level':<12} {'Tile Column':<12} {'Tile Row':<12} {'Count':<6}")
         print("="*42)
         for zoom_level, tile_column, tile_row, count in duplicates:
             print(f"{zoom_level:<12} {tile_column:<12} {tile_row:<12} {count:<6}")
-    else:
-        print("No duplicate rows found.")
 
 if __name__ == '__main__':
     main()

@@ -2,82 +2,134 @@
 
 ## Installation: 
 - Using pip install (Windows/ Linux):
-    ``` bash 
-    pip install vtiles
-    ```
+  ``` bash 
+  pip install vtiles
+  ```
 - Show information of installed vtiles: 
-    ``` bash 
-    pip show vtiles
-    ```
+  ``` bash 
+  pip show vtiles
+  ```
 - Install the latest vertion of vtiles:
-    ``` bash 
-    pip install vtiles --upgrade
-    ```
+  ``` bash 
+  pip install vtiles --upgrade
+  ```
     
 - Visit vtiles on [PyPI](https://pypi.org/project/vtiles/)
 
 ## Usage:
 ### MBTILES Utilities:
 #### mbtilesinfo
-- Show MBTiles metadata info:  
-    ``` bash 
-    > mbtilesinfo <file_path>
-    ```
-  Ex: `> mbtilesinfo tiles.mbtiles`
+- Show MBTiles metadata info, support raster MBTiles and vector MBTiles
+- **mbtilesinfo** can show information from metadata table, total number of tiles, and vector_layers list for vector mbtiles 
+  ``` bash 
+  > mbtilesinfo <file_path>
+  ```
+
+#### mbtilesinspect
+- Inspect MBTiles in actual tiles data instead of reading from metadata: 
+- **mbtilesinspect** can show minzoom, maxzoom, total number of tiles, tile compression type, number of tiles comparing to standard tiles number at each zoom level, and it can show the duplicated rows in terms of zoom_level, tile_column, and tile_row
+  ``` bash 
+  > mbtilesinspect <file_path>
+  ```
+Ex: `> mbtilesinspect tiles.mbtiles`
+
+#### mbtilesdelduplicate
+- Inspect MBTiles in actual tiles data instead of reading from metadata: 
+- **mbtilesinspect** can show minzoom, maxzoom, total number of tiles, tile compression type, number of tiles comparing to standard tiles number at each zoom level, and it can show the duplicated rows in terms of zoom_level, tile_column, and tile_row
+  ``` bash 
+  > mbtilesinspect <file_path>
+  ```
+Ex: `> mbtilesinspect tiles.mbtiles`
+
 
 #### mbtiles2folder
 - Convert MBTiles file to folder: (support raster MBTiles (.png, .jpg, .webp) and vector MBTiles (.pbf)) 
-    ``` bash 
-    > mbtiles2folder -i <file_name.mbtiles> -o [output_folder (optional, current dir if not specified)] -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] -minzoom [optional, default is 0] -maxzoom [Maximum zoom level to export (optional, default is maxzoom from input MBTiles]
-    ```
+  ``` bash 
+  > mbtiles2folder -i <file_name.mbtiles> -o [output_folder (optional, current dir if not specified)] -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] -minzoom [optional, default is 0] -maxzoom [Maximum zoom level to export (optional, default is maxzoom from input MBTiles]
+  ```
   Ex: `> mbtiles2folder -i tiles.mbtiles -o tiles_folder -flipy 0 -minzoom 0 -maxzoom 6`
-  
+
+#### url2folder
+- Convert MBTiles file to folder: 
+  ``` bash 
+  > url2folder -i <file_name.mbtiles> -o [output_folder (optional, current dir if not specified)] -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] -minzoom [optional, default is 0] -maxzoom [Maximum zoom level to export (optional, default is maxzoom from input MBTiles]
+  ```
+  Ex: `> url2folder `
+
+
 #### folder2mbtiles
 - Convert a tiles folder to MBTiles file: (support raster tile (.png, .jpg, .webp) and vector tile (.pbf))
-    ``` bash 
-    > folder2mbtiles -i <input_folder> -o [file_name.mbtiles (optional)] -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0]
-    ```
+  ``` bash 
+  > folder2mbtiles -i <input_folder> -o [file_name.mbtiles (optional)] -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0]
+  ```
   Ex: `> folder2mbtiles -i tiles_folder -o tiles.mbtiles -flipy 0`
   
   Without -o parameter: file_name.mbtiles has the same name with <input_folder> name at the current directory 
 
 #### mbtiles2geojson
 - Convert MBTiles to GeoJSON.
-    ``` bash 
-    > mbtiles2geojson -i <input file> -o <Output GeoJSON> -minzoom <minzoom> -maxzoom <maxzoom> -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] -l [List of layer names to convert, all layers if not specified]
-    ```
+  ``` bash 
+  > mbtiles2geojson -i <input file> -o <Output GeoJSON> -minzoom <minzoom> -maxzoom <maxzoom> -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] -l [List of layer names to convert, all layers if not specified]
+  ```
   Ex: `> mbtiles2geojson -i tiles.mbtils -o geojson.geojson -minzoom 0 - maxzoom 1 -flipy 0 -l water building`
 
 #### geoson2mbtiles
 - Convert geojson file to mbtiles (need tippecanoe to be installed)
-    ``` bash 
-    > geojson2mbtiles -i <input files> -z <maxzoom> -o <output> -t <tippecanoe path> --extra-args <drop-densest-as-needed or coalesce-densest-as-needed or extend-zooms-if-still-dropping>
-    ```
+  ``` bash 
+  > geojson2mbtiles -i <input files> -z <maxzoom> -o <output> -t <tippecanoe path> --extra-args <drop-densest-as-needed or coalesce-densest-as-needed or extend-zooms-if-still-dropping>
+  ```
   Ex: `> geojson2mbtiles -i state.geojson district.geojson -z9 -o state_district.mbtiles -t /usr/local/bin/ --extra-args coalesce-densest-as-needed` (on Linux)
 
 #### folder2s3
 - Uplpad a vector/ raster tiles folder to Amazon S3 Bucket:  
-    ``` bash 
-    > folder2s3 -i <input_folder> -format <'pbf', 'png', 'jpg', 'jpeg', 'webp', 'pbf', 'mvt'>
-    ```
+  ``` bash 
+  > folder2s3 -i <input_folder> -format <'pbf', 'png', 'jpg', 'jpeg', 'webp', 'pbf', 'mvt'>
+  ```
   Ex: `> folder2s3 -i vectortiles_folder -format pbf`
  
   Input S3 parameters:
 
   ```bash
-    > S3 Bucket name: <Your S3 Bucket name (required)>
-    > S3 Prefix: [Your S3 prefix (Optional. Press Enter to upload to the bucket root folder)]
-    > AWS Access Key ID: <Your_Access_Key_ID (required)>
-    > AWS Secret Access Key: <Your_Secrect_Access_Key (required)>
-    > AWS Region: <AWS region (Optional. Press Enter to choose default region)>
+  > S3 Bucket name: <Your S3 Bucket name (required)>
+  > S3 Prefix: [Your S3 prefix (Optional. Press Enter to upload to the bucket root folder)]
+  > AWS Access Key ID: <Your_Access_Key_ID (required)>
+  > AWS Secret Access Key: <Your_Secrect_Access_Key (required)>
+  > AWS Region: <AWS region (Optional. Press Enter to choose default region)>
   ```
 
 #### mbtiles2s3
 - Uplpad a MBTiles file to Amazon S3 Bucket: Need to install aws cli and run aws configure to input credentials first
-    ``` bash 
-    > mbtiles2s3 <input file> <s3 bucket> -p (to see the uploading progress)
-    ```
+  ``` bash 
+  > mbtiles2s3 <input file> <s3 bucket> -p (to see the uploading progress)
+  ```
   Ex: `> mbtiles2s3 tiles.mbtiles s3://mybucket -p`
+- Install aws cli on Ubuntu:
+  ``` bash 
+  sudo apt update
+  sudo apt install curl unzip -y
+  curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+  unzip awscliv2.zip
+  sudo ./aws/install
+  ```
+  Verify aws cli installation:
+  ``` bash 
+  aws --version
+  ```
+- Configure aws cli:
+  ``` bash 
+  aws configure
+  ```
+  Input AWS Access Key ID and AWS Secret Access Key
+  ``` bash 
+  AWS Access Key ID [None]: AKIAxxxxxxxxxxxxxxxx
+  AWS Secret Access Key [None]: wJalrxxxxxxxxxxxxxxxxxxxxxxxxxx
+  Default region name [None]:
+  Default output format [None]:
+  ```
+  Check aws configuration by listing your S3 buckets:
+  ``` bash 
+  aws s3 ls
+  ```
 
 #### mbtiles2pbf
 - Extract a tile from MBTiles to PBF 
