@@ -17,7 +17,7 @@ import sqlite3
 from vtiles.utils.mapbox_vector_tile import decode
 import zlib, gzip
 import vtiles.utils.mercantile as mercantile
-
+import binascii
 CHUNK_SIZE = 1024
 
 def num2deg(xtile, ytile, zoom):
@@ -124,13 +124,13 @@ def fix_wkt(data):
 
 
 # Check if mbtiles is vector
-def check_vector(input_mbtiles):    
-    conn = sqlite3.connect(input_mbtiles)
-    cursor = conn.cursor()
-    cursor.execute("SELECT tile_data FROM tiles LIMIT 1")
-    tile_data = cursor.fetchone()[0]
-    compression_type = ''
-    try:         
+def check_vector(mbtiles):   
+    try:   
+        conn = sqlite3.connect(mbtiles)
+        cursor = conn.cursor()
+        cursor.execute("SELECT tile_data FROM tiles LIMIT 1")
+        tile_data = cursor.fetchone()[0]
+        compression_type = ''           
         if tile_data[:2] == b'\x1f\x8b':
             compression_type = 'GZIP'
             tile_data = gzip.decompress(tile_data)
@@ -138,11 +138,48 @@ def check_vector(input_mbtiles):
             compression_type = 'ZLIB'
             tile_data = zlib.decompress(tile_data)
         decode(tile_data)
-        conn.close()
         return True, compression_type
     except:
-        conn.close()
         return False, compression_type
+    finally:
+        cursor.close()
+        conn.close()
+
+def determine_tileformat(mbtiles):
+    tile_format = ''  
+    conn = sqlite3.connect(mbtiles)
+    cursor = conn.cursor()    
+    try:
+        # Open database connection and cursor
+        is_vector,_ = check_vector(mbtiles)
+        if is_vector:
+            tile_format = 'pbf'
+        else: 
+            # Get a tile's binary data from the tiles table
+            cursor.execute("SELECT tile_data FROM tiles LIMIT 1;")
+            tile_data = cursor.fetchone()[0]  # Access the first element of the tuple
+            
+            if tile_data:
+                # Convert the binary data to a hex string for inspection
+                hex_data = binascii.hexlify(tile_data[:12]).decode('utf-8')            
+                # Check the format based on the hex data
+                if hex_data.startswith('52494646') and '57454250' in hex_data:  # WebP
+                    tile_format = 'webp'  # WebP format
+                elif hex_data.startswith('89504e47'):
+                    tile_format = 'png'  # PNG format
+                elif hex_data.startswith('ffd8ff'):
+                    tile_format = 'jpg'  # JPG format
+                else:
+                    tile_format='unknown' # Unknown format if none match
+    except Exception as e:
+        print (f"Error reading format from tile_data: {e}")
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+    return tile_format  # Return the determined tile_format
+
 
 def count_tiles(mbtiles):
     """Count the number of tiles in the MBTiles file."""

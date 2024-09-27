@@ -5,7 +5,7 @@
 import sqlite3
 import os, sys
 import logging
-from vtiles.utils.geopreocessing import check_vector, get_zoom_levels,get_bounds_center
+from vtiles.utils.geopreocessing import check_vector, determine_tileformat, get_zoom_levels,get_bounds_center
 logging.basicConfig(level=logging.INFO)
 
 
@@ -42,7 +42,7 @@ def fix_vectormetadata(input_mbtiles, compression_type):
     conn.close() 
     print(f'Fix metadata for {name} done!')
 
-def fix_rastermetadata(input_mbtiles, compression_type):
+def fix_rastermetadata(input_mbtiles, format):
     conn = sqlite3.connect(input_mbtiles)       
     cursor = conn.cursor()
     cursor.execute('CREATE TABLE IF NOT EXISTS metadata (name TEXT, value TEXT);')
@@ -55,11 +55,9 @@ def fix_rastermetadata(input_mbtiles, compression_type):
     cursor.execute("INSERT OR IGNORE INTO metadata (name, value) VALUES (?, ?)", ('description', desc))
    
     # Update format to raster
-    cursor.execute("INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)", ('format', 'raster'))
+    cursor.execute("INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)", ('format',format))
 
-    # Update compression
-    cursor.execute("INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)", ('compression', compression_type))
-    
+  
     # Update min zoom, max zoom
     min_zoom, max_zoom = get_zoom_levels(input_mbtiles)
     cursor.execute("INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)", ('minzoom', min_zoom))
@@ -82,10 +80,11 @@ def main():
     input_mbtiles = sys.argv[1]
     if (os.path.exists(input_mbtiles)):
         is_vector, compression_type = check_vector(input_mbtiles) 
+        tile_format = determine_tileformat(input_mbtiles) 
         if is_vector:
             fix_vectormetadata(input_mbtiles, compression_type)   
         else:
-            fix_rastermetadata(input_mbtiles, compression_type)        
+            fix_rastermetadata(input_mbtiles, tile_format)        
     else: 
         print ('MBTiles file does not exist!. Please recheck and input a correct file path.')
         return

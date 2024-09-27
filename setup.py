@@ -11,12 +11,14 @@ requirements = [
     'fiona~=1.10.0',
     'shapely~=2.0.1',
     'osmium~=3.7.0',
-    'protobuf~=5.26.1'
+    'protobuf~=5.26.1',
+    'ujson',
+    'pillow'
 ],
 
 setup(
     name='vtiles',
-    version='1.0.1',
+    version='1.0.5',
     author = 'Thang Quach',
     author_email= 'quachdongthang@gmail.com',
     url='https://github.com/thangqd/vtiles',

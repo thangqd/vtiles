@@ -50,12 +50,11 @@ Ex: `> mbtilesinspect tiles.mbtiles`
   Ex: `> mbtiles2folder -i tiles.mbtiles -o tiles_folder -flipy 0 -minzoom 0 -maxzoom 6`
 
 #### url2folder
-- Convert MBTiles file to folder: 
+- Download tiles from a tile server to tiles folders: 
   ``` bash 
-  > url2folder -i <file_name.mbtiles> -o [output_folder (optional, current dir if not specified)] -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] -minzoom [optional, default is 0] -maxzoom [Maximum zoom level to export (optional, default is maxzoom from input MBTiles]
+  > url2folder -url <URL> -o <output_folder> -minzoom <min zoom> -maxzoom <max zoom>
   ```
-  Ex: `> url2folder `
-
+  Ex: `> url2folder -url -o tiles.mbtiles -minzoom 0 -maxzoom 1 `
 
 #### folder2mbtiles
 - Convert a tiles folder to MBTiles file: (support raster tile (.png, .jpg, .webp) and vector tile (.pbf))
