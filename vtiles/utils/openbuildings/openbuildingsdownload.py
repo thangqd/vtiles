@@ -2,6 +2,7 @@ import csv
 import requests
 import sys
 from tqdm import tqdm
+from io import StringIO
 
 def get_url(tile_id):
     """Construct the URL for the given tile_id."""
@@ -43,21 +44,23 @@ def download_tiles_for_country(country_identifier):
     """Download tiles for a country based on its name or ISO code."""
     tiles_to_download = []
     country_name = ""
-
-    # Read the CSV file with tile data
-    try:
-        with open("s2countries.csv", mode='r') as file:
-            csv_reader = csv.DictReader(file)
-            
-            for row in csv_reader:
-                # Check if country name or iso code matches the provided identifier
-                if row['name'].lower() == country_identifier.lower() or row['iso'].lower() == country_identifier.lower():
-                    country_name = row['name']  # Get the country name for naming files
-                    tiles_to_download.append(row['tile_id'])
-
-    except FileNotFoundError:
-        print("The file 's2countries.csv' was not found.")
+    csv_url = "https://raw.githubusercontent.com/thangqd/vtiles/refs/heads/main/vtiles/utils/openbuildings/s2countries.csv"
+    
+    # Fetch the CSV from the online source
+    response = requests.get(csv_url)
+    if response.status_code != 200:
+        print(f"Failed to retrieve s2countries.csv, Status Code: {response.status_code}")
         return
+    
+    # Parse the CSV data from the response content
+    csv_content = response.content.decode('utf-8')
+    csv_reader = csv.DictReader(StringIO(csv_content))
+
+    # Find tiles for the given country identifier (name or iso)
+    for row in csv_reader:
+        if row['name'].lower() == country_identifier.lower() or row['iso'].lower() == country_identifier.lower():
+            country_name = row['name']  # Get the country name for naming files
+            tiles_to_download.append(row['tile_id'])
 
     if not tiles_to_download:
         print(f"No tiles found for country: {country_identifier}")
@@ -68,10 +71,14 @@ def download_tiles_for_country(country_identifier):
     for tile_id in tqdm(tiles_to_download, desc=f"Downloading tiles for {country_name}", unit="tile"):
         download_tile(tile_id, country_name)
 
-if __name__ == "__main__":
+def main():
+    """Main function to handle input and trigger tile downloads."""
     if len(sys.argv) != 2:
         print("Usage: python openbuildings.py <country_name_or_iso>")
         sys.exit(1)
 
     country_identifier = sys.argv[1]
     download_tiles_for_country(country_identifier)
+
+if __name__ == "__main__":
+    main()

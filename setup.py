@@ -66,7 +66,7 @@ setup(
             'servevectormbtiles=vtiles.server.servevectormbtiles:main',       
             'servepmtiles=vtiles.server.servepmtiles:main',                   
             
-           
+            'openbuildingsdownload = vtiles.utils.openbuildings.openbuildingsdownload:main',
             'pmtilesinfo = vtiles.utils.pmtilesinfo:main',
             'pmtiles2folder = vtiles.utils.pmtiles2folder:main',
             'pmtiles2mbtiles = vtiles.utils.pmtiles2mbtiles:main',           
