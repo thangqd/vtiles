@@ -35,6 +35,7 @@ def main():
     flipy = args.flipy
     XYZ_REGEX = r"\/(\d+)\/(\d+)\/(\d+)"
 
+    ################### need to be fixed for URL pattern 
     if _is_url(url_or_path):
         matches = search(XYZ_REGEX, args.input)
         if matches is None:
