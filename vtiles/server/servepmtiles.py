@@ -16,9 +16,9 @@ class ThreadingSimpleServer(ThreadingMixIn, http.server.HTTPServer):
 
 def main():
     parser = argparse.ArgumentParser(description="HTTP server for PMTiles archives.")
-    parser.add_argument("-i", help="PMTiles archive to serve")
-    parser.add_argument("-port", help="Port to bind to")
-    parser.add_argument("-host", help="Address to bind server to: default localhost")
+    parser.add_argument("-i", help="PMTiles archive to serve", required=True)
+    parser.add_argument("-port", help="Port to bind to (default: 9000)", type=int, default=9000)
+    parser.add_argument("-host", help="Address to bind server to (default: localhost)", default="localhost")
     parser.add_argument(
         "--cors-allow-all",
         help="Return Access-Control-Allow-Origin:* header",
@@ -71,7 +71,7 @@ def main():
                 self.wfile.write(data)
 
         host = args.host or "localhost"
-        print(f"serving {host}:{args.port}/{{z}}/{{x}}/{{y}}.{fmt}, for development only")
+        print(f"serving http://{host}:{args.port}/{{z}}/{{x}}/{{y}}.{fmt}, for development only")
         httpd = ThreadingSimpleServer((args.host or "", int(args.port)), Handler)
         try:
             httpd.serve_forever()
