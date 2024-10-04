@@ -10,7 +10,6 @@ requirements = [
     'click~=8.1.7',
     'fiona~=1.10.0',
     'shapely~=2.0.1',
-    'osmium~=3.7.0',
     'protobuf~=5.26.1',
     'ujson',
     'pillow'
