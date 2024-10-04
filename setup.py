@@ -18,7 +18,7 @@ requirements = [
 
 setup(
     name='vtiles',
-    version='1.0.5',
+    version='1.0.6',
     author = 'Thang Quach',
     author_email= 'quachdongthang@gmail.com',
     url='https://github.com/thangqd/vtiles',
@@ -29,12 +29,7 @@ setup(
     packages=find_packages(),
     entry_points={
         'console_scripts': [
-            'osmdownload = vtiles.osm.osmdownload:main',
-            'osmreplication = vtiles.osm.osmreplication:main',
-            'osminfo = vtiles.osm.osminfo:main',
-            'osm2geojson = vtiles.osm.osm2geojson:main',
-            'osmpub = vtiles.osm.osmpub:main',
-            
+                        
             'mbtilesinfo = vtiles.mbtiles.mbtilesinfo:main',
             'mbtilesinspect = vtiles.mbtiles.mbtilesinspect:main',
             'mbtilesdelduplicate = vtiles.mbtiles.mbtilesdelduplicate:main',           
@@ -66,7 +61,6 @@ setup(
             'servevectormbtiles=vtiles.server.servevectormbtiles:main',       
             'servepmtiles=vtiles.server.servepmtiles:main',                   
             
-            'openbuildingsdownload = vtiles.utils.openbuildings.openbuildingsdownload:main',
             'pmtilesinfo = vtiles.utils.pmtilesinfo:main',
             'pmtiles2folder = vtiles.utils.pmtiles2folder:main',
             'pmtiles2mbtiles = vtiles.utils.pmtiles2mbtiles:main',           
