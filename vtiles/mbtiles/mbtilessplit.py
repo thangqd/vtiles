@@ -2,15 +2,16 @@ import sqlite3
 import shutil
 import gzip, zlib
 import json
-import argparse
-import os
+import argparse, sys, os
 from tqdm import tqdm
 from vtiles.utils.mapbox_vector_tile import encode, decode
 from vtiles.utils.geopreocessing import fix_wkt
 import logging
-from vtiles.mbtiles import mbtilesfixmeta
+from vtiles.mbtiles.mbtilesfixmeta import fix_vectormetadata, fix_rastermetadata
+from vtiles.utils.geopreocessing import check_vector
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def process_metadata(metadata_json, layers_to_keep, exclude=False):
     vector_layers = metadata_json.get('vector_layers', [])
@@ -34,11 +35,10 @@ def process_metadata(metadata_json, layers_to_keep, exclude=False):
 
 
 def process_mbtiles(input_mbtiles, output_mbtiles, layers_to_keep, keep_layers=True):
-    if os.path.exists(output_mbtiles):
-        os.remove(output_mbtiles)
-    is_vector, compression_type = mbtilesfixmeta.check_vector(input_mbtiles) 
+    is_vector, compression_type = check_vector(input_mbtiles) 
+    desc = 'Update metadata by vtiles.mbtiles.mbtilesfixmeta' 
     if is_vector:
-        mbtilesfixmeta.fix_metadata(input_mbtiles, compression_type)    
+        fix_vectormetadata(input_mbtiles, compression_type,desc)    
         shutil.copyfile(input_mbtiles, output_mbtiles)    
         with sqlite3.connect(output_mbtiles) as conn:
             cursor = conn.cursor()
@@ -99,7 +99,7 @@ def process_mbtiles(input_mbtiles, output_mbtiles, layers_to_keep, keep_layers=T
                                     INSERT OR REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data)
                                     VALUES (?, ?, ?, ?)""", (zoom_level, tile_column, tile_row, encoded_tile_gzip))
                             except Exception as e:
-                                logging.error(f"Error encoding tile {zoom_level}/{tile_column}/{tile_row}: {e}")
+                                logger.error(f"Error encoding tile {zoom_level}/{tile_column}/{tile_row}: {e}")
                 
                 description = 'Splitting MBTiles file by selected layers using mbtilessplit from vtiles'
                 cursor.execute('''
@@ -109,26 +109,50 @@ def process_mbtiles(input_mbtiles, output_mbtiles, layers_to_keep, keep_layers=T
                 
                 conn.commit()
                 if keep_layers:
-                    logging.info(f'Successfully saved split MBTiles into {output_mbtiles}')
+                    logger.info(f'Successfully saved split MBTiles into {output_mbtiles}')
                 else:
-                    logging.info(f'Successfully saved remaining MBTiles into {output_mbtiles}')
+                    logger.info(f'Successfully saved remaining MBTiles into {output_mbtiles}')
             
             except sqlite3.Error as e:
-                logging.error(f"Database error: {e}")
+                logger.error(f"Database error: {e}")
             except Exception as e:
-                logging.error(f"Unexpected error: {e}")
+                logger.error(f"Unexpected error: {e}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Split an MBTiles file by selected layers.")
-    parser.add_argument("-i", "--input", required=True, help="Path to the input MBTiles file")
-    parser.add_argument("-o", "--output", required=True, help="Path to the output MBTiles file")
+    parser.add_argument('input', help='Path to the input MBTiles file.')
+    parser.add_argument('-o', '--output', help='Path to the output PMTiles file.')
     parser.add_argument("-l", "--layers", nargs='+', required=True, help="List of layer names to be splitted")
+
     args = parser.parse_args()
+    if not os.path.exists(args.input):
+        logging.error('Input MBTiles file does not exist! Please recheck and input a correct file path.')
+        sys.exit(1)
+        
+    input_file_abspath = os.path.abspath(args.input)
+    # Determine the output filename
+    if args.output:
+        output_file_abspath = os.path.abspath(args.output)
+        if os.path.exists(output_file_abspath):
+            logger.error(f'Output MBTiles  {output_file_abspath} already exists!. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+            sys.exit(1)
+        elif not output_file_abspath.endswith('pmtiles'):
+            logger.error(f'Output MBTiles  {output_file_abspath} must end with .mbtiles. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+            sys.exit(1)
+    else:
+        output_file_name = os.path.basename(input_file_abspath).replace('.mbtiles', '_splitted.mbtiles')
+        output_file_abspath = os.path.join(os.path.dirname(input_file_abspath), output_file_name)
+ 
+        if os.path.exists(output_file_abspath): 
+            logger.error(f'Output MBTiles  {output_file_abspath} already exists! Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+            sys.exit(1)          
     
-    process_mbtiles(args.input, args.output, args.layers, keep_layers=True)
-    remaining_output = f"{os.path.splitext(args.input)[0]}_remained.mbtiles"
-    process_mbtiles(args.input, remaining_output, args.layers, keep_layers=False)
+    logger.info(f'Splitting {input_file_abspath} to {output_file_abspath}')
+    process_mbtiles(input_file_abspath, output_file_name, args.layers, keep_layers=True)
+    remaining_output = os.path.basename(input_file_abspath).replace('.mbtiles', '_remained.mbtiles')
+    process_mbtiles(input_file_abspath, remaining_output, args.layers, keep_layers=False)
+    logger.info('Splitting MBTiles done!')
 
 if __name__ == "__main__":
     main()

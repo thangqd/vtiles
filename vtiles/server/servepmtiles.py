@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse
+import argparse, sys, os
 import http.server
 import json
 import re
@@ -16,7 +16,7 @@ class ThreadingSimpleServer(ThreadingMixIn, http.server.HTTPServer):
 
 def main():
     parser = argparse.ArgumentParser(description="HTTP server for PMTiles archives.")
-    parser.add_argument("-i", help="PMTiles archive to serve", required=True)
+    parser.add_argument('input', help='Path to the input PMTiles file.')
     parser.add_argument("-port", help="Port to bind to (default: 9000)", type=int, default=9000)
     parser.add_argument("-host", help="Address to bind server to (default: localhost)", default="localhost")
     parser.add_argument(
@@ -25,8 +25,13 @@ def main():
         action="store_true",
     )
     args = parser.parse_args()
+    if not os.path.exists(args.input):
+        logging.error('Input PMTiles file does not exist! Please recheck and input a correct file path.')
+        sys.exit(1)
+    
+    input_file_abspath = os.path.abspath(args.input)
 
-    with open(args.i, "r+b") as f:
+    with open(input_file_abspath, "r+b") as f:
         source = MmapSource(f)
         reader = Reader(source)
 
@@ -71,12 +76,12 @@ def main():
                 self.wfile.write(data)
 
         host = args.host or "localhost"
-        print(f"serving http://{host}:{args.port}/{{z}}/{{x}}/{{y}}.{fmt}, for development only")
+        logger.info(f"serving http://{host}:{args.port}/{{z}}/{{x}}/{{y}}.{fmt}, for development only")
         httpd = ThreadingSimpleServer((args.host or "", int(args.port)), Handler)
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
-            print("Keyboard interrupt received, stopping server...")
+            logger.info("Keyboard interrupt received, stopping server...")
             httpd.server_close()
         
 if __name__ == "__main__":

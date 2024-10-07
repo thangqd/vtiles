@@ -1,9 +1,13 @@
-import argparse
+import argparse, sys, os
 import json
 from .pmtiles.reader import Reader, MmapSource, all_tiles
 from .pmtiles.tile import TileType
 import sqlite3
 from tqdm import tqdm
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def pmtiles_to_mbtiles(input, output):
     conn = sqlite3.connect(output)
@@ -67,17 +71,40 @@ def pmtiles_to_mbtiles(input, output):
                 (zxy[0], zxy[1], flipped_y, tile_data),
             )
 
-    
     conn.commit()
     conn.close()
 
 def main():
-    parser = argparse.ArgumentParser(description="Convert PMTiles to MBTiles.")
-    parser.add_argument("-i", "--input", required=True, help="Input PMTiles file path.")
-    parser.add_argument("-o", "--output", required=True, help="Output MBTiles file path.")
+    parser = argparse.ArgumentParser(description='Convert PMTiles to MBTiles.')
+    parser.add_argument('input', help='Path to the input PMTiles file.')
+    parser.add_argument('-o', '--output', help='Path to the output MBTiles file.')
+    
     args = parser.parse_args()
+    if not os.path.exists(args.input):
+        logging.error('Input PMTiles file does not exist! Please recheck and input a correct file path.')
+        sys.exit(1)
+        
+    input_file_abspath = os.path.abspath(args.input)
+    # Determine the output filename
+    if args.output:
+        output_file_abspath = os.path.abspath(args.output)
+        if os.path.exists(output_file_abspath):
+            logger.error(f'Output MBTIles  {output_file_abspath} already exists!. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+            sys.exit(1)
+        elif not output_file_abspath.endswith('mbtiles'):
+            logger.error(f'Output MBTIles  {output_file_abspath} must end with .mbtiles. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+            sys.exit(1)
+    else:
+        output_file_name = os.path.basename(input_file_abspath).replace('.pmtiles', '.mbtiles')
+        output_file_abspath = os.path.join(os.path.dirname(input_file_abspath), output_file_name)
+ 
+        if os.path.exists(output_file_abspath): 
+            logger.error(f'Output MBTiles  {output_file_abspath} already exists! Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+            sys.exit(1)          
 
-    pmtiles_to_mbtiles(args.input, args.output)
+    logging.info(f'Converting {input_file_abspath} to {output_file_abspath}.')
+    pmtiles_to_mbtiles(input_file_abspath, output_file_abspath)
+    logging.info(f'Converting PMTiles to MBTiles done!')
 
 if __name__ == "__main__":
     main()

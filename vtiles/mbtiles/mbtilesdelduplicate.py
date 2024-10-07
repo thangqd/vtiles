@@ -1,4 +1,4 @@
-import os
+import argparse, sys, os
 import shutil
 import sqlite3
 import argparse
@@ -6,17 +6,11 @@ import logging
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def remove_duplicates(input_mbtiles, output_mbtiles):
-    # Check if the output file exists and remove it
-    if os.path.exists(output_mbtiles):
-        os.remove(output_mbtiles)
-        logging.info(f"Removed existing output file: {output_mbtiles}")
-
     # Copy the original MBTiles file to the output path
     shutil.copyfile(input_mbtiles, output_mbtiles)
-    logging.info(f"Copied input file to output: {input_mbtiles} -> {output_mbtiles}")
-
     conn = sqlite3.connect(output_mbtiles)
     cursor = conn.cursor()
 
@@ -36,7 +30,7 @@ def remove_duplicates(input_mbtiles, output_mbtiles):
             cursor.execute("ALTER TABLE tiles RENAME TO temp_tiles")
 
         # Step 2: Remove duplicates by keeping only the first occurrence
-        logging.info("Removing duplicates from the 'temp_tiles' table...")
+        logger.info("Removing duplicates from the 'temp_tiles' table...")
 
         # Create a new table to store unique rows
         cursor.execute("""
@@ -60,10 +54,10 @@ def remove_duplicates(input_mbtiles, output_mbtiles):
 
         # Commit the changes
         conn.commit()
-        logging.info("Duplicates removed and 'tiles' table updated successfully.")
+        logger.info("Duplicates removed and 'tiles' table updated successfully.")
 
     except sqlite3.Error as e:
-        logging.error(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
     finally:
         # Close the connection
         conn.close()
@@ -71,15 +65,34 @@ def remove_duplicates(input_mbtiles, output_mbtiles):
 def main():
     # Create argument parser inside the main function
     parser = argparse.ArgumentParser(description="Remove duplicate tiles from an MBTiles file.")
-    parser.add_argument('-i', '--input', required=True, help="Input MBTiles file")
-    parser.add_argument('-o', '--output', required=True, help="Output MBTiles file")
+    parser.add_argument('input', help='Path to the input MBTiles file.')
+    parser.add_argument('-o', '--output', help='Path to the output MBTiles file.')
 
-    # Parse the command-line arguments
     args = parser.parse_args()
+    if not os.path.exists(args.input):
+        logging.error('Input MBTiles file does not exist! Please recheck and input a correct file path.')
+        sys.exit(1)
+        
+    input_file_abspath = os.path.abspath(args.input)
+    # Determine the output filename
+    if args.output:
+        output_file_abspath = os.path.abspath(args.output)
+        if os.path.exists(output_file_abspath):
+            logger.error(f'Output MBTiles file {output_file_abspath} already exists!. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+            sys.exit(1)
+        elif not output_file_abspath.endswith('mbtiles'):
+            logger.error(f'Output MBTiles file {output_file_abspath} must end with .mbtiles. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+            sys.exit(1)
+    else:
+        output_file_name = os.path.basename(input_file_abspath).replace('.mbtiles', '_delduplicate.mbtiles')
+        output_file_abspath = os.path.join(os.path.dirname(input_file_abspath), output_file_name)
+ 
+        if os.path.exists(output_file_abspath): 
+            logger.error(f'Output MBTiles file {output_file_abspath} already exists! Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+            sys.exit(1)          
 
-    # Show progress for copying the file
-    logging.info("Starting to remove duplicates...")
-    remove_duplicates(args.input, args.output)
+    logging.info(f'Starting to remove duplicates in {input_file_abspath} and save to {output_file_abspath}.') 
+    remove_duplicates(input_file_abspath, output_file_abspath)
     logging.info("Processing complete.")
 
 if __name__ == '__main__':

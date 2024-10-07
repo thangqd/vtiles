@@ -1,13 +1,12 @@
 import zipfile
-import os
-import argparse
+import argparse, sys, os
 from tqdm import tqdm
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def extract_vtpk(vtpk_path, output_dir):
-    # Check if the output directory exists, if not, create it
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
     # Open the VTPK file
     with zipfile.ZipFile(vtpk_path, 'r') as zip_ref:
         # Get the list of files in the archive
@@ -17,21 +16,36 @@ def extract_vtpk(vtpk_path, output_dir):
         for file in tqdm(file_list, desc="Extracting VTPK", unit="file"):
             zip_ref.extract(file, output_dir)
 
-    print(f'Extracted VTPK to {output_dir}')
+    logger.info(f'Extracted VTPK to {output_dir} done!')
 
 def main():
-    # Initialize the argument parser
-    parser = argparse.ArgumentParser(description="Extract VTPK (Vector Tile Package) to a specified folder.")
-    
-    # Define input and output arguments
-    parser.add_argument('-i', '--input', required=True, help="Path to the input VTPK file")
-    parser.add_argument('-o', '--output', required=True, help="Path to the output directory")
-    
-    # Parse the command-line arguments
+    parser = argparse.ArgumentParser(description='Extract VTPK (Vector Tile Package) to folder')
+    parser.add_argument('input', help='Path to the input VTPK file')
+    parser.add_argument('-o', '--output', help='Path to the output directory')
+
     args = parser.parse_args()
 
-    # Extract the VTPK
-    extract_vtpk(args.input, args.output)
+    if not os.path.exists(args.input):
+        logging.error('VTPK file does not exist! Please recheck and input a correct file path.')
+        sys.exit(1)
+    
+    input_filename_abspath = os.path.abspath(args.input)
+    # Determine the output folder
+    if args.output:
+        output_folder_abspath = os.path.abspath(args.output)
+    else:
+        output_folder_abspath = os.path.join(os.path.dirname(args.input), os.path.splitext(os.path.basename(args.input))[0])
+
+    # Create output folder if it doesn't exist
+    if not os.path.exists(output_folder_abspath):
+        os.makedirs(output_folder_abspath)
+    else:         
+        logging.error(f'Output folder {output_folder_abspath} already existed. Please provide a valid folder with -o.')
+        sys.exit(1)
+
+    # Inform the user of the conversion
+    logging.info(f'Converting {input_filename_abspath} to {output_folder_abspath} folder.')
+    extract_vtpk(input_filename_abspath, output_folder_abspath)
 
 if __name__ == '__main__':
     main()

@@ -1,8 +1,10 @@
-import sqlite3, argparse, sys, math, logging, time, os, json
+import sqlite3, argparse, sys, logging, os, json
 from tqdm import tqdm
+from vtiles.utils.geopreocessing import flip_y, check_vector
+from vtiles.mbtiles.mbtilesfixmeta import fix_rastermetadata, fix_vectormetadata,determine_tileformat
+
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-from vtiles.utils.geopreocessing import flip_y
-import vtiles.utils.mercantile as mercantile
 
 def mbtiles_connect(mbtiles_file):
   try:
@@ -13,137 +15,41 @@ def mbtiles_connect(mbtiles_file):
     logger.exception(e)
     sys.exit(1)
 
-def mbtiles_setup(cursor):
-  cursor.execute("""
+def mbtiles_init(cur):
+  cur.execute("""
     create table tiles (
       zoom_level integer,
       tile_column integer,
       tile_row integer,
       tile_data blob);
       """)
-  cursor.execute("""create table metadata (name text, value text);""")
-  cursor.execute("""create unique index name on metadata (name);""")
-  cursor.execute("""create unique index tile_index on tiles(zoom_level, tile_column, tile_row);""")
-
-def import_metadata(cursor, metadata_json):
-  for name, value in metadata_json.items():
-    cursor.execute('insert into metadata (name, value) values (?, ?)',
-                (name, value))
-
-def get_zoom_levels(cursor):   
-    # Query to get min and max zoom levels
-    cursor.execute('''
-        SELECT MIN(zoom_level) AS min_zoom, MAX(zoom_level) AS max_zoom
-        FROM tiles
-    ''')    
-    result = cursor.fetchone()    
-    min_zoom = result[0] if result else None
-    max_zoom = result[1] if result else None  
-
-    return min_zoom, max_zoom
-
-def get_bounds_at_zoom(cursor, zoom_level):
-    # Query tiles at the specified zoom level
-    cursor.execute("SELECT tile_column, tile_row FROM tiles WHERE zoom_level = ?", (zoom_level,))
-    tiles = cursor.fetchall()
-
-    # Calculate bounding boxes for each tile
-    bounds = []
-    for tile in tiles:
-        x, y = tile
-        flip_y = (1 << zoom_level) - 1 - y # TMS scheme
-        # Calculate bounds for the given tile coordinates
-        tile_bounds = mercantile.bounds(x,flip_y, zoom_level)
-        bounds.append(tile_bounds)
-
-    return bounds
-
-def compute_max_bound(bounds):
-    # Initialize min and max coordinates with extreme values
-    min_lat = min_lon = float('inf')
-    max_lat = max_lon = float('-inf')
-
-    for bound in bounds:
-        # Unpack bounding box coordinates (west, south, east, north)
-        west, south, east, north = bound
-
-        # Update min and max values
-        min_lon = min(min_lon, west)
-        max_lon = max(max_lon, east)    
-        min_lat = min(min_lat, south)
-        max_lat = max(max_lat, north)
-            
-    center_lon = (min_lon + max_lon) / 2
-    center_lat = (min_lat + max_lat) / 2
-
-    # Return the overall bounding box
-    return min_lon, min_lat, max_lon, max_lat,center_lon,center_lat
-
-def get_bounds_center(cursor):   
-    boundsString, centerString = None, None
-    try:    
-        _,max_zoom = get_zoom_levels(cursor)
-        bounds_at_max_zoom = get_bounds_at_zoom(cursor, max_zoom)
-        bounds = compute_max_bound(bounds_at_max_zoom)
-        boundsString = ','.join(map(str, bounds[:4]))
-        centerString = ','.join(map(str, bounds[4:]))+ f',{max_zoom}'     
-        return boundsString, centerString
-    except Exception as e:
-        logging.error(f"Get bounds and center erros: {e}")        
-        boundsString = '-180.000000,-85.051129,180.000000,85.051129'
-        centerString = '0,0,0'
-        return boundsString, centerString
-
-
-# Create metadata table in case no metadata.json found in the tiles folder
-def create_metadata(cursor, name, format, tms=0): 
-  try:
-    minzoom, maxzoom = get_zoom_levels(cursor)
-    bounds, center = get_bounds_center(cursor)
-    cursor.executemany("INSERT INTO metadata (name, value) VALUES (?, ?);", [
-      ("name", name),
-      ("format", format), 
-      ("bounds", bounds), 
-      ("center", center), 
-      ("minzoom", minzoom), 
-      ("maxzoom", maxzoom), 
-      ("desccription", 'MBTiles converted from a tiles folder using vtiles'), 
-      ("attribution", '<a href="https://github.com/thangqd/vtiles" target="_blank">&copy; vtiles</a>'),
-      ("type", ''),
-      ("version", '1')
-    ])
-    logger.info('Creating metadata done.')
-  except Exception as e:
-      print(f"Error creating metadata: {e}")
+  cur.execute("""create unique index tile_index on tiles(zoom_level, tile_column, tile_row);""")
 
 def optimize_connection(cur):
   cur.execute("""PRAGMA synchronous=0""")
   # cur.execute("""PRAGMA locking_mode=EXCLUSIVE""")
   cur.execute("""PRAGMA journal_mode=DELETE""")
 
+def import_metadata(input_mbtiles, metadata_json):
+  conn = sqlite3.connect(input_mbtiles)       
+  cur = conn.cursor()
+  cur.execute('CREATE TABLE metadata (name TEXT, value TEXT);')
+  cur.execute('CREATE UNIQUE INDEX name on metadata (name);')
+  for name, value in metadata_json.items():
+    cur.execute('insert into metadata (name, value) values (?, ?)',(name, value))
+  
+
 def get_dirs(path):
   return [name for name in os.listdir(path)
     if os.path.isdir(os.path.join(path, name))]
 
-def folder2mbtiles(input_folder, mbtiles_file, tms=0):
-  logger.info("Converting folder to MBTiles")
-  logger.debug("%s --> %s" % (input_folder, mbtiles_file))
+def folder2mbtiles(input_folder, mbtiles_file, flipy=0):
+  # logger.debug("%s --> %s" % (input_folder, mbtiles_file))
   con = mbtiles_connect(mbtiles_file)
   cur = con.cursor()
   optimize_connection(cur)
-  mbtiles_setup(cur)
-  metadata_json = os.path.join(input_folder, 'metadata.json')
- 
-  if os.path.exists(metadata_json):
-    metadata = json.load(open(metadata_json, 'r'))
-    import_metadata(cur, metadata)
-    logger.info('Importing metadata done.')
-  else:
-    logger.warning('metadata.json not found')
+  mbtiles_init(cur)  
 
-  # count = 0
-  # start_time = time.time()
-  
   with tqdm(desc="Coverting tiles", unit=" tiles") as pbar:
     for zoom_dir in get_dirs(input_folder):   
       z = int(zoom_dir)
@@ -155,11 +61,11 @@ def folder2mbtiles(input_folder, mbtiles_file, tms=0):
           else:
             # file_name, ext = current_file.split('.',1)
             file_name, ext = os.path.splitext(current_file)       
-            if ext in ('.png','.jpg','.jpeg','.webp', '.pbf'):
+            if ext in ('.png','.jpg','.jpeg','.webp','.pbf','.mvt'):
               f = open(os.path.join(input_folder, zoom_dir, row_dir, current_file), 'rb')
               file_content = f.read()
               f.close()
-              if tms == 1:
+              if flipy == 1:
                 y = flip_y(int(z), int(file_name))
               else:
                 y = int(file_name)
@@ -170,58 +76,59 @@ def folder2mbtiles(input_folder, mbtiles_file, tms=0):
                   # (z, x, y, file_content))
                   (z, x, y, sqlite3.Binary(file_content)))
               pbar.update(1)
-              # count = count + 1
-              # if (count % 100) == 0:
-              #   logger.info(" %s tiles inserted (%d tiles/sec)" % (count, count / (time.time() - start_time)))
-  try:
-    name = os.path.basename(input_folder)
-    create_metadata(cur, name, ext, tms)    
-  except:      
-    logger.warning('No metadata created!')
-  
+
   cur.close()
   con.commit()
-  con.close()
-    
+  con.close()    
   logger.info('Converting Folder to MBTiles done.')
 
+  # converting or fixing metadata
+  metadata = os.path.join(input_folder, 'metadata.json')
+  if os.path.exists(metadata):
+    metadata_json = json.load(open(metadata, 'r'))
+    import_metadata(mbtiles_file, metadata_json)
+    logger.info('Converting metadata done.') 
+  else:
+    is_vector, compression_type = check_vector(mbtiles_file) 
+    tile_format = determine_tileformat(mbtiles_file)
+    desc = 'MBtiles created by vtiles.mbtiles.folder2mbtiles and metadata updated by mbtilesfixmeta' 
+    if is_vector:
+        fix_vectormetadata(mbtiles_file, compression_type,desc)   
+    else:
+        fix_rastermetadata(mbtiles_file, tile_format,desc)     
+   
 
 def main():
   logging.basicConfig(level=logging.INFO, format='%(message)s')
   parser = argparse.ArgumentParser(description='Convert Tiles folder to MBTiles')
-  parser.add_argument('-i', required=True, help='Input folder')
-  parser.add_argument('-o', default=None, help='Output mbtiles file name (optional)')
+  parser.add_argument('input', help='Input folder')
+  parser.add_argument('-o','--output', default=None, help='Output mbtiles file name (optional)')
   parser.add_argument('-flipy', type=int, default=0,choices=[0, 1], help='TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0')
 
   args = parser.parse_args()
 
-  if not args.i:
-    print('Please provide the input folder.')
-    exit()
+  if not os.path.exists(args.input) or not os.path.isdir(args.input):
+    logger.error('Input folder does not exist or invalid!. Please recheck and input a correct one.')
+    sys.exit(1)
+  input_folder_abspath =  os.path.abspath(args.input)  
 
-  if not os.path.exists(args.i) or not os.path.isdir(args.i):
-    print('Input folder does not exist or invalid!. Please recheck and input a correct one.')
-    exit()
+  if args.output:
+      output_file_abspath = os.path.abspath(args.output)
+      if os.path.exists(output_file_abspath):
+        logger.error(f'Output MBTiles file {output_file_abspath} already exists!. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+        sys.exit(1)
+      elif not output_file_abspath.endswith('mbtiles'):
+        logger.error(f'Output MBTiles file {output_file_abspath} must end with .mbtiles. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+        sys.exit(1)
+  else:
+    output_file_name = os.path.basename(input_folder_abspath) + '.mbtiles' 
+    output_file_abspath = os.path.join(os.path.dirname(args.input), output_file_name)    
+    if os.path.exists(output_file_abspath): 
+      logger.error(f'Output MBTiles file {output_file_abspath} already exists! Please recheck and input a correct one. Ex: -o tiles.mbtiles')
+      sys.exit(1)          
 
-  input_folder_abspath =  os.path.abspath(args.i)
-
-  if not args.o:    
-    output_file_name = os.path.basename(input_folder_abspath) + '.mbtiles' # Get input folder name
-    output_file_abspath  = os.path.abspath(output_file_name)  # Get absolute path of default output file name
-    if not os.path.exists(output_file_abspath): 
-      print(f'Converting folder {input_folder_abspath} to {output_file_abspath}')        
-    else: # the output file is already existed.
-      print(f'Output MBTiles file {output_file_abspath} already existed! Please recheck and input a correct one. Ex: -o tiles.mbtiles')
-      exit()
-  
-  else:      
-    output_file_abspath = os.path.abspath(args.o)
-    if output_file_abspath.endswith('mbtiles') and not os.path.exists(output_file_abspath):
-      print(f'Converting folder {input_folder_abspath} to {output_file_abspath}')     
-    else:
-      print(f'Output MBTiles file {output_file_abspath} is not valid or already existed!. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
-      exit()
-  
+  # Inform the user of the conversion
+  logging.info(f'Converting {input_folder_abspath} to {output_file_abspath}.') 
   folder2mbtiles(input_folder_abspath, output_file_abspath, args.flipy)
 
 if __name__ == "__main__":

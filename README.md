@@ -45,9 +45,9 @@ Ex: `> mbtilesinspect tiles.mbtiles`
 #### mbtiles2folder
 - Convert MBTiles file to folder: (support raster MBTiles (.png, .jpg, .webp) and vector MBTiles (.pbf)) 
   ``` bash 
-  > mbtiles2folder -i <file_name.mbtiles> -o [output_folder (optional, current dir if not specified)] -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] -minzoom [optional, default is 0] -maxzoom [Maximum zoom level to export (optional, default is maxzoom from input MBTiles]
+  > mbtiles2folder  <file_name.mbtiles> -o [output_folder (optional, current dir if not specified)] -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] -minzoom [optional, default is 0] -maxzoom [Maximum zoom level to export (optional, default is maxzoom from input MBTiles]
   ```
-  Ex: `> mbtiles2folder -i tiles.mbtiles -o tiles_folder -flipy 0 -minzoom 0 -maxzoom 6`
+  Ex: `> mbtiles2folder tiles.mbtiles -o tiles_folder -flipy 0 -minzoom 0 -maxzoom 6`
 
 #### url2folder
 - Download tiles from a tile server to tiles folders: 
@@ -59,32 +59,32 @@ Ex: `> mbtilesinspect tiles.mbtiles`
 #### folder2mbtiles
 - Convert a tiles folder to MBTiles file: (support raster tile (.png, .jpg, .webp) and vector tile (.pbf))
   ``` bash 
-  > folder2mbtiles -i <input_folder> -o [file_name.mbtiles (optional)] -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0]
+  > folder2mbtiles  <input_folder> -o [file_name.mbtiles (optional)] -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0]
   ```
-  Ex: `> folder2mbtiles -i tiles_folder -o tiles.mbtiles -flipy 0`
+  Ex: `> folder2mbtiles  tiles_folder -o tiles.mbtiles -flipy 0`
   
   Without -o parameter: file_name.mbtiles has the same name with <input_folder> name at the current directory 
 
 #### mbtiles2geojson
 - Convert MBTiles to GeoJSON.
   ``` bash 
-  > mbtiles2geojson -i <input file> -o <Output GeoJSON> -minzoom <minzoom> -maxzoom <maxzoom> -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] -l [List of layer names to convert, all layers if not specified]
+  > mbtiles2geojson  <input file> -o <Output GeoJSON> -zoom <zoom level> -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] -l [List of layer names to convert, all layers if not specified]
   ```
-  Ex: `> mbtiles2geojson -i tiles.mbtils -o geojson.geojson -minzoom 0 - maxzoom 1 -flipy 0 -l water building`
+  Ex: `> mbtiles2geojson  tiles.mbtiles -o geojson.geojson -zoom 0 -flipy 0 -l water building`
 
 #### geoson2mbtiles
 - Convert geojson file to mbtiles (need tippecanoe to be installed)
   ``` bash 
-  > geojson2mbtiles -i <input files> -z <maxzoom> -o <output> -t <tippecanoe path> --extra-args <drop-densest-as-needed or coalesce-densest-as-needed or extend-zooms-if-still-dropping>
+  > geojson2mbtiles  <input files> -z <maxzoom> -o <output> -t <tippecanoe path> --extra-args <drop-densest-as-needed or coalesce-densest-as-needed or extend-zooms-if-still-dropping>
   ```
-  Ex: `> geojson2mbtiles -i state.geojson district.geojson -z9 -o state_district.mbtiles -t /usr/local/bin/ --extra-args coalesce-densest-as-needed` (on Linux)
+  Ex: `> geojson2mbtiles  state.geojson district.geojson -z9 -o state_district.mbtiles -t /usr/local/bin/ --extra-args coalesce-densest-as-needed` (on Linux)
 
 #### folder2s3
 - Uplpad a vector/ raster tiles folder to Amazon S3 Bucket:  
   ``` bash 
-  > folder2s3 -i <input_folder> -format <'pbf', 'png', 'jpg', 'jpeg', 'webp', 'pbf', 'mvt'>
+  > folder2s3  <input_folder> -format <'pbf', 'mvt', 'png', 'jpg', 'jpeg', 'webp', 'mvt'>
   ```
-  Ex: `> folder2s3 -i vectortiles_folder -format pbf`
+  Ex: `> folder2s3  vectortiles_folder -format pbf`
  
   Input S3 parameters:
 
@@ -133,9 +133,9 @@ Ex: `> mbtilesinspect tiles.mbtiles`
 #### mbtiles2pbf
 - Extract a tile from MBTiles to PBF 
   ``` bash 
-    > mbtiles2pbf -i <input file> -z <zoom level> -x <tile column> -y <tile row> -o <output file>
+    > mbtiles2pbf  <input file> -z <zoom level> -x <tile column> -y <tile row> -o <output file>
   ```
-  Ex: `> mbtiles2pbf -i tiles.mbtils -z 2 -x 1 -y 2 -o pbf_212.pbf`
+  Ex: `> mbtiles2pbf  tiles.mbtils -z 2 -x 1 -y 2 -o pbf_212.pbf`
 
 #### pbfinfo
 - Show pbf metadata info
@@ -147,52 +147,52 @@ Ex: `> mbtilesinspect tiles.mbtiles`
 #### pbf2geojson
 - Convert tile data from a BBF file, MBTiles file, or URL to GeoJSON 
   ``` bash 
-    > pbf2geojson -i <input pbf, MBTiles or URL> -o <output file> -z <tile zoom level> - x <tile column> -y <tile row>  -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] 
+    > pbf2geojson  <input pbf, MBTiles or URL> -o <output file> -z <tile zoom level> - x <tile column> -y <tile row>  -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] 
   ```
-  Ex: `> pbf2geojson -i pbf_file.pbf -o geojson_file.geojson -z 2 -x 1 -y 2`
+  Ex: `> pbf2geojson  pbf_file.pbf -o geojson_file.geojson -z 2 -x 1 -y 2`
 
 #### flipy
 - Convert TMS <--> XYZ tiling scheme for a tiles folder
   ``` bash 
-    > flipy -i <input folder> -o <output folder>
+    > flipy  <input folder> -o <output folder>
   ```
-  Ex: `> flipy -i input_folder -o output_folder`
+  Ex: `> flipy  input_folder -o output_folder`
 
 #### mbtiles2pmtiles
 - Convert Convert MBTiles to PMTiles
   ``` bash 
-    > flipy -i <input MBTiles> -o <output PMTiles> -z <max zoom level>
+    > flipy  <input MBTiles> -o <output PMTiles> -z <max zoom level>
   ```
-  Ex: `> mbtiles2pmtiles -i mbtiles_file.mbtiles -o pmtiles_file.pmtiles -z 6`
+  Ex: `> mbtiles2pmtiles  mbtiles_file.mbtiles -o pmtiles_file.pmtiles -z 6`
 
 #### mbtilessplit
 - Split an MBTiles file by selected layers
   ``` bash 
-    > mbtilessplit -i <input file> -o <output file> -l <list of layer names to be splitted>
+    > mbtilessplit  <input file> -o <output file> -l <list of layer names to be splitted>
   ```
-  Ex: `> mbtilessplit -i input_file.mbtiles -o splitted_file.mbtiles -l water`
+  Ex: `> mbtilessplit  input_file.mbtiles -o splitted_file.mbtiles -l water`
       (mbtilessplit also save remaining mbtiles layers to {input file}_remained.mbtiles)
 
 #### mbtilesmerge
 - Merge multiple MBTiles files into a single MBTiles file
   ``` bash 
-    > mbtilesmerge -i <input file list> -o <output file> -l <list of layer names to be splitted>
+    > mbtilesmerge  <input file list> -o <output file> -l <list of layer names to be splitted>
   ```
-  Ex: `> mbtilesmerge -i file_1.mbtiles file_2.mbtiles -o merged.mbtiles`
+  Ex: `> mbtilesmerge  file_1.mbtiles file_2.mbtiles -o merged.mbtiles`
 
 #### mbtilescompress
 - Compress MBTiles file with GZIP
   ``` bash 
-    > mbtilescompress -i <input file> -o <output file>
+    > mbtilescompress  <input file> -o <output file>
   ```
-  Ex: `> mbtilescompress -i mbtiles_file.mbtiles -o compressed.mbtiles`
+  Ex: `> mbtilescompress  mbtiles_file.mbtiles -o compressed.mbtiles`
 
 #### mbtilesdecompress
 - Decompress MBTiles file (either being compressed with GZIP or ZLIB)
   ``` bash 
-    > mbtilesdecompress -i <input file> -o <output file>
+    > mbtilesdecompress  <input file> -o <output file>
   ```
-  Ex: `> mbtilesdecompress -i mbtiles_file.mbtiles -o decompressed.mbtiles`
+  Ex: `> mbtilesdecompress  mbtiles_file.mbtiles -o decompressed.mbtiles`
 
 #### mbtilesfixmeta
 - Create or update metadata for an existing MBTiles file.
@@ -226,7 +226,7 @@ Ex: `> mbtilesinspect tiles.mbtiles`
 #### servepmtiles
 - Serve MVT tiles from a PostgreSQL/PostGIS database, so clients can access to the tiles server via, for ex. htttp://localhost/8000/pmtiles/z/x/y.pbf.
   ``` bash 
-    > servepostgis -i <PMTiles file> -port <port number> -host <host IP, default is localhost>
+    > servepostgis  <PMTiles file> -port <port number> -host <host IP, default is localhost>
   ```
 ### Other Utilities:
 #### pmtilesinfo
@@ -237,10 +237,10 @@ Ex: `> mbtilesinspect tiles.mbtiles`
 #### pmtiles2folder
 - Convert PMTiles file to folder
     ``` bash 
-    > pmtiles2folder -i <input file> -o <output_folder>
+    > pmtiles2folder  <input file> -o <output_folder>
     ```
 #### pmtiles2mbtiles
 - Convert PMTiles file to MBTiles file
     ``` bash 
-    > pmtiles2mbtiles -i <input PMTiles> -o <output MBTiles>
+    > pmtiles2mbtiles  <input PMTiles> -o <output MBTiles>
     ```

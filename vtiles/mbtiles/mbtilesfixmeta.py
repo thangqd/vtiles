@@ -7,9 +7,9 @@ import os, sys
 import logging
 from vtiles.utils.geopreocessing import check_vector, determine_tileformat, get_zoom_levels,get_bounds_center
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-
-def fix_vectormetadata(input_mbtiles, compression_type):
+def fix_vectormetadata(input_mbtiles, compression_type, desc):
     conn = sqlite3.connect(input_mbtiles)       
     cursor = conn.cursor()
     cursor.execute('CREATE TABLE IF NOT EXISTS metadata (name TEXT, value TEXT);')
@@ -18,7 +18,7 @@ def fix_vectormetadata(input_mbtiles, compression_type):
     # Update name and description
     name = os.path.basename(input_mbtiles)
     cursor.execute("INSERT OR IGNORE INTO metadata (name, value) VALUES (?, ?)", ('name', name))
-    desc = 'Update metadata by vtiles.mbtiles.fixmeta'
+    
     cursor.execute("INSERT OR IGNORE INTO metadata (name, value) VALUES (?, ?)", ('description', desc))
 
     # Update format to pbf 
@@ -40,9 +40,9 @@ def fix_vectormetadata(input_mbtiles, compression_type):
         cursor.execute("INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)", ('center', center))
     conn.commit()
     conn.close() 
-    print(f'Fix metadata for {name} done!')
+    # logger.info(f'Fix metadata for {name} done!')
 
-def fix_rastermetadata(input_mbtiles, format):
+def fix_rastermetadata(input_mbtiles, format,desc):
     conn = sqlite3.connect(input_mbtiles)       
     cursor = conn.cursor()
     cursor.execute('CREATE TABLE IF NOT EXISTS metadata (name TEXT, value TEXT);')
@@ -51,7 +51,6 @@ def fix_rastermetadata(input_mbtiles, format):
     # Update name and description
     name = os.path.basename(input_mbtiles)
     cursor.execute("INSERT OR IGNORE INTO metadata (name, value) VALUES (?, ?)", ('name', name))
-    desc = 'Update metadata by vtiles.mbtiles.fixmeta'
     cursor.execute("INSERT OR IGNORE INTO metadata (name, value) VALUES (?, ?)", ('description', desc))
    
     # Update format to raster
@@ -71,23 +70,24 @@ def fix_rastermetadata(input_mbtiles, format):
         cursor.execute("INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)", ('center', center))
     conn.commit()
     conn.close() 
-    print(f'Fix metadata for {name} done!')
 
 def main():
     if len(sys.argv) != 2:
-      print("Please provide the MBTiles input filename.")
-      return
+      logger.error("Please provide the MBTiles input filename.")
+      sys.exit(1)
     input_mbtiles = sys.argv[1]
+    
     if (os.path.exists(input_mbtiles)):
         is_vector, compression_type = check_vector(input_mbtiles) 
-        tile_format = determine_tileformat(input_mbtiles) 
+        tile_format = determine_tileformat(input_mbtiles)
+        desc = 'Update metadata by vtiles.mbtiles.mbtilesfixmeta' 
         if is_vector:
-            fix_vectormetadata(input_mbtiles, compression_type)   
+            fix_vectormetadata(input_mbtiles, compression_type,desc)   
         else:
-            fix_rastermetadata(input_mbtiles, tile_format)        
+            fix_rastermetadata(input_mbtiles, tile_format,desc)        
     else: 
-        print ('MBTiles file does not exist!. Please recheck and input a correct file path.')
-        return
+        logger.error ('MBTiles file does not exist!. Please recheck and input a correct file path.')
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

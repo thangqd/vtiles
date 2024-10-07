@@ -7,8 +7,8 @@ import multiprocessing
 import argparse
 import logging
 
-# logging.basicConfig(level=logging.INFO)
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 s3 = boto3.client('s3')
 
 def upload_file(bucket_name, local_file_path, s3_key, content_type=None, content_encoding=None):
@@ -21,15 +21,14 @@ def upload_file(bucket_name, local_file_path, s3_key, content_type=None, content
         s3.upload_file(local_file_path, bucket_name, s3_key, ExtraArgs=extra_args)
         return True
     except Exception as e:
-        # logging.error(f"Error uploading {local_file_path} to {s3_key}: {e}")
-        print(f"Error uploading {local_file_path} to {s3_key}: {e}")
+        logging.error(f"Error uploading {local_file_path} to {s3_key}: {e}")
         return False
 
 def upload_files(bucket_name, input_folder, s3_prefix='', content_type=None, content_encoding=None):
     total_files = sum(len(files) for _, _, files in os.walk(input_folder))
     num_cores = multiprocessing.cpu_count()
 
-    with tqdm(total=total_files, desc="Uploading", unit="file") as pbar:
+    with tqdm(total=total_files, desc="Uploading", unit="files ") as pbar:
         with ThreadPoolExecutor(max_workers=num_cores*2) as executor:
             futures = []
             for root, _, files in os.walk(input_folder):
@@ -59,7 +58,7 @@ def folder2s3(input_folder, format='', bucket_name='', s3_prefix='', aws_access_
         return
 
     try:
-        logging.info(f'Uploading folder {input_folder} to S3 bucket: {bucket_name}. Press Ctrl+C to cancel')
+        logging.info(f'Uploading folder {input_folder} to S3 bucket: {bucket_name}.Press Ctrl+C to cancel')
         if format == 'pbf' or format == 'mvt' :
             upload_files(bucket_name, input_folder, s3_prefix, 'application/x-protobuf', 'gzip')
         else:
@@ -71,11 +70,11 @@ def folder2s3(input_folder, format='', bucket_name='', s3_prefix='', aws_access_
 
 def main():
     parser = argparse.ArgumentParser(description='Upload a tiles folder to S3.')
-    parser.add_argument('-i', type=str, required=True, help='The tiles folder to upload.')
-    parser.add_argument('-format', type=str, required=True, choices=['pbf', 'png', 'jpg', 'jpeg', 'webp', 'pbf', 'mvt'], help='format of the files to upload.')
+    parser.add_argument('input', type=str, help='The tiles folder to upload.')
+    parser.add_argument('-format', type=str, required=True, choices=['pbf', 'mvt', 'png', 'jpg', 'jpeg', 'webp'], help='format of the files to upload.')
     args = parser.parse_args()
 
-    input_folder = args.i
+    input_folder = args.input
     format = args.format
 
     if not os.path.exists(input_folder) or not os.path.isdir(input_folder):

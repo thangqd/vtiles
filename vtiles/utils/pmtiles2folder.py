@@ -1,18 +1,13 @@
 import argparse
 import json
-import os
+import os,sys, logging
 from .pmtiles.reader import Reader, MmapSource, all_tiles  
 from tqdm import tqdm 
 
-def pmtiles_to_folder(input_file, output_folder):
-    """
-    Convert PMTiles to a folder structure.
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+logger = logging.getLogger(__name__)
 
-    Parameters:
-    input_file (str): Path to the input PMTiles file.
-    output_folder (str): Path to the output directory.
-    """
-    os.makedirs(output_folder, exist_ok=True)  # Create output folder if it doesn't exist
+def pmtiles_to_folder(input_file, output_folder):   
     with open(input_file, "r+b") as f:
         source = MmapSource(f)
         reader = Reader(source)
@@ -34,18 +29,33 @@ def pmtiles_to_folder(input_file, output_folder):
                 tile_file.write(tile_data)
 
 def main():
-    """
-    Main function to parse arguments and call the conversion function.
-    """
-    parser = argparse.ArgumentParser(description="Convert PMTiles to folder.")
-    parser.add_argument("-i", "--input", required=True, help="Input PMTiles file path.")
-    parser.add_argument("-o", "--output", required=True, help="Output directory path.")
+    parser = argparse.ArgumentParser(description='Convert PMTiles to tiles folder')
+    parser.add_argument('input', help='Input PMTiles file path')
+    parser.add_argument('-o', '--output',help='Output directory path')
     args = parser.parse_args()
 
-    input_pmtiles = args.input
-    output_directory = args.output
+    if not os.path.exists(args.input):
+        logging.error('PMTiles file does not exist! Please recheck and input a correct file path.')
+        sys.exit(1)
+    
+    input_filename_abspath = os.path.abspath(args.input)
+    # Determine the output folder
+    if args.output:
+        output_folder_abspath = os.path.abspath(args.output)
+    else:
+        output_folder_abspath = os.path.join(os.path.dirname(args.input), os.path.splitext(os.path.basename(args.input))[0])
 
-    pmtiles_to_folder(input_pmtiles, output_directory)
+    # Create output folder if it doesn't exist
+    if not os.path.exists(output_folder_abspath):
+        os.makedirs(output_folder_abspath)
+    else:         
+        logging.error(f'Output folder {output_folder_abspath} already existed. Please provide a valid folder with -o.')
+        sys.exit(1)
+
+    # Inform the user of the conversion
+    logging.info(f'Converting {input_filename_abspath} to {output_folder_abspath} folder.')
+    pmtiles_to_folder(input_filename_abspath, output_folder_abspath)
+
 
 if __name__ == "__main__":
     main()

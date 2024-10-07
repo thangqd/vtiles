@@ -1,9 +1,13 @@
-import os
+#!/usr/bin/env python
+import os,sys, logging
 import sqlite3
 import json
 import argparse
 from tqdm import tqdm
 from vtiles.utils.geopreocessing import flip_y, safe_makedir,determine_tileformat
+
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+logger = logging.getLogger(__name__)
 
 def extract_metadata(mbtiles):
     """Extract metadata from MBTiles file."""
@@ -15,7 +19,7 @@ def extract_metadata(mbtiles):
         metadata = {name: value for name, value in metadata_rows}
         return metadata
     except sqlite3.Error as e:
-        print(f"Error reading metadata: {e}")
+        logging.warning(f"Error reading metadata: {e}")
         return None
     finally:
         cursor.close()
@@ -26,7 +30,7 @@ def write_metadata_to_json(metadata, dirname):
     metadata_json_path = os.path.join(dirname, "metadata.json")
     with open(metadata_json_path, "w") as metadata_file:
         json.dump(metadata, metadata_file, indent=4)
-    print("Writing metadata.json done!")
+    logging.info("Writing metadata.json done!")
 
 def get_max_zoom(mbtiles):
     try:
@@ -41,7 +45,6 @@ def get_max_zoom(mbtiles):
 def convert_mbtiles_to_folder(mbtiles, output_folder, flipy, min_zoom=0, max_zoom=None):
     conn = sqlite3.connect(mbtiles)
     cursor = conn.cursor()
-    safe_makedir(output_folder)
     
     tile_format = determine_tileformat(mbtiles)
     
@@ -73,30 +76,42 @@ def convert_mbtiles_to_folder(mbtiles, output_folder, flipy, min_zoom=0, max_zoo
         except Exception as e:
             print(f"Error writing tile at {tile_path}: {e}")
 
-    print('Converting MBTiles to folder done!')
+    logging.info('Converting MBTiles to folder done!')
     
     cursor.close()
     conn.close()
 
 def main():
-    parser = argparse.ArgumentParser(description='Convert MBTiles file to folder')
-    parser.add_argument('-i', '--i', required=True, help='Input MBTiles file name')
-    parser.add_argument('-o', '--o',help='Output folder name (optional)')
+    parser = argparse.ArgumentParser(description='Convert MBTiles file to tiles folder')
+    parser.add_argument('input', help='Input MBTiles file name')
+    parser.add_argument('-o', '--output',help='Output folder name (optional)')
     parser.add_argument('-flipy', type=int, default=0, choices=[0, 1], help='TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0')
     parser.add_argument('-minzoom', type=int, default=0, help='Min zoom to export (optional, default is 0)')
-    parser.add_argument('-maxzoom', type=int, default=None, help='Max zoom to export (optional, default is maxzoom from the input MBTiles)')
+    parser.add_argument('-maxzoom', type=int, default=None, help='Max zoom to export (optional, default is the maxzoom of the input MBTiles)')
 
     args = parser.parse_args()
 
-    if not os.path.exists(args.i):
-        print('MBTiles file does not exist! Please recheck and input a correct file path.')
-        exit()
+    if not os.path.exists(args.input):
+        logging.error('MBTiles file does not exist! Please recheck and input a correct file path.')
+        sys.exit(1)
     
-    input_filename_abspath = os.path.abspath(args.i)
-    output_folder_abspath = os.path.abspath(args.o) if args.o else os.path.join(os.path.dirname(args.i), os.path.splitext(os.path.basename(args.i))[0])
-    
-    print(f'Converting {input_filename_abspath} to {output_folder_abspath} folder.')
-    convert_mbtiles_to_folder(args.i, output_folder_abspath, args.flipy, args.minzoom, args.maxzoom)
+    input_filename_abspath = os.path.abspath(args.input)
+    # Determine the output folder
+    if args.output:
+        output_folder_abspath = os.path.abspath(args.output)
+    else:
+        output_folder_abspath = os.path.join(os.path.dirname(args.input), os.path.splitext(os.path.basename(args.input))[0])
+
+    # Create output folder if it doesn't exist
+    if not os.path.exists(output_folder_abspath):
+        os.makedirs(output_folder_abspath)
+    else:         
+        logging.error(f'Output folder {output_folder_abspath} already existed. Please provide a valid folder with -o.')
+        sys.exit(1)
+
+    # Inform the user of the conversion
+    logging.info(f'Converting {input_filename_abspath} to {output_folder_abspath} folder.')
+    convert_mbtiles_to_folder(input_filename_abspath, output_folder_abspath, args.flipy, args.minzoom, args.maxzoom)
 
 if __name__ == "__main__":
     main()

@@ -18,7 +18,6 @@ def tile_data_to_geojson(tile_data, x, y, z, output):
     except Exception as e:
         print(f"Error saving pbf to geojson: {e}")
 
-
 def main():
     parser = argparse.ArgumentParser(description='Convert tile data from BBF file, MBTiles file, or URL to GeoJSON.')
     parser.add_argument('-i', '--input', type=str, required=True, help='Input PBF file, MBTiles file, or URL')

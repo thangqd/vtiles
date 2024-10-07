@@ -1,19 +1,14 @@
 #!/usr/bin/env python
-import os
+import os, logging
 import shutil
 import sys
 import argparse
 from tqdm import tqdm
+from vtiles.utils.geopreocessing import safe_makedir
 
-def convert_tms_to_xyz(inDIR, copyDIR):
-    # Check if output directory exists, exit if it does
-    if os.path.exists(copyDIR):
-        sys.exit("ERROR: The output directory already exists!")
+logger = logging.getLogger(__name__)
 
-    # Create the root of the output directory if it does not exist
-    if not os.path.exists(copyDIR):
-        os.makedirs(copyDIR)
-
+def flip_y(inDIR, copyDIR):
     # Copy all files from the root of inDIR to the root of copyDIR, including metadata.json
     root_files = [f for f in os.listdir(inDIR) if os.path.isfile(os.path.join(inDIR, f))]
     for root_file in tqdm(root_files, desc="Copying metadata (if existed)", unit=' ', ncols=80, bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{percentage:.0f}%]'):
@@ -46,16 +41,42 @@ def convert_tms_to_xyz(inDIR, copyDIR):
                 fileExtension = fileName.split(".")[1]
                 newY = str((2**z - 1) - y) + "." + fileExtension
                 shutil.copyfile(os.path.join(rVal, fileName), os.path.join(newpath, newY))
-                pbar.update(1)
 
 def main():
-    # Get the command line arguments and set up some variables
-    parser = argparse.ArgumentParser(description='Convert TMS <--> XYZ tiling scheme for a tiles folder')
-    parser.add_argument('-i', type=str, help='input directorty')
-    parser.add_argument('-o', type=str, help='output directory')
-    args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
     
-    convert_tms_to_xyz(args.i, args.o)
+    # Argument parser setup with input folder as a positional argument
+    parser = argparse.ArgumentParser(description='Convert TMS <--> XYZ tiling scheme for a tiles folder')
+    parser.add_argument('input', help='Input folder containing tiles')
+    parser.add_argument('-o', '--output', default=None, help='Output folder (optional)')
+    args = parser.parse_args()
+
+    # Validate input folder
+    if not os.path.exists(args.input) or not os.path.isdir(args.input):
+        logging.error('Input folder does not exist or is invalid. Please provide a valid folder.')
+        sys.exit(1)
+
+    input_folder_abspath = os.path.abspath(args.input)
+
+    # Determine the output folder
+    if args.output:
+        output_folder_abspath = os.path.abspath(args.output)
+    else:
+        input_folder_name = os.path.basename(input_folder_abspath)
+        output_folder_abspath = os.path.join(os.path.dirname(input_folder_abspath), f"{input_folder_name}_flipy")
+
+    # Create output folder if it doesn't exist
+    if not os.path.exists(output_folder_abspath):
+        os.makedirs(output_folder_abspath)
+    else:         
+        logging.error(f'Output folder {output_folder_abspath} already exists. Please provide a valid folder with -o.')
+        sys.exit(1)
+
+    # Inform the user of the conversion
+    logging.info(f'Converting folder {input_folder_abspath} to {output_folder_abspath}')
+    
+    # Call the conversion function
+    flip_y(input_folder_abspath, output_folder_abspath)
 
 if __name__ == "__main__":
     main()
