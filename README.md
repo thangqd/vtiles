@@ -74,7 +74,7 @@ Ex: `> mbtilesinspect tiles.mbtiles`
 #### folder2s3
 - Uplpad a vector/ raster tiles folder to Amazon S3 Bucket:  
   ``` bash 
-  > folder2s3  <input_folder> -format <'pbf', 'mvt', 'png', 'jpg', 'jpeg', 'webp', 'mvt'>
+  > folder2s3  <input_folder> -format <'pbf', 'mvt', 'png', 'jpg', 'jpeg', 'webp'>
   ```
   Ex: `> folder2s3  vectortiles_folder -format pbf`
  
