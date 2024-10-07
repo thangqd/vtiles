@@ -1,15 +1,7 @@
 # VTiles - Vector Tiles Utilities
 
 ## Installation: 
-- Using pip install (Windows/ Linux):
-  ``` bash 
-  pip install vtiles
-  ```
-- Show information of installed vtiles: 
-  ``` bash 
-  pip show vtiles
-  ```
-- Install the latest vertion of vtiles:
+- Using pip:
   ``` bash 
   pip install vtiles --upgrade
   ```
