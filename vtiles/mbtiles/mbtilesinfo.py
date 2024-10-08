@@ -50,28 +50,25 @@ def read_vector_layers(mbtiles):
     
     if row is not None:
         json_content = row[0]
-        layers_json = json.loads(json_content)
-        
-        # Print vector layers information
-        if "vector_layers" in layers_json:
-            vector_layers = layers_json["vector_layers"]
-            print("######:")
-            print("Vector layers:")
-            for index, layer in enumerate(vector_layers):
-                row_index = index + 1
-                layer_id = layer["id"]
-                description = layer.get("description", "")
-                minzoom = layer.get("minzoom", "")
-                maxzoom = layer.get("maxzoom", "")
-                fields = layer.get("fields", {})
-                
-                print(f"{row_index}: {layer_id}")
-                # print(f"  Description: {description}")
-                # print(f"  Min Zoom: {minzoom}")
-                # print(f"  Max Zoom: {maxzoom}")
-                # print(f"  Fields: {fields}")
-                # print(" ")
-        
+        try:
+            layers_json = json.loads(json_content)
+            # Print vector layers information
+            if "vector_layers" in layers_json:
+                vector_layers = layers_json["vector_layers"]
+                print("######:")
+                print("Vector layers:")
+                for index, layer in enumerate(vector_layers):
+                    row_index = index + 1
+                    layer_id = layer["id"]
+                    description = layer.get("description", "")
+                    minzoom = layer.get("minzoom", "")
+                    maxzoom = layer.get("maxzoom", "")
+                    fields = layer.get("fields", {})                    
+                    print(f"{row_index}. {layer_id}: minzoom {minzoom}, maxzoom {maxzoom}")
+        except Exception as e:
+            print(f'Reading vector_layers error: {e}')
+            pass
+ 
         # Print tilestats information
         # if "tilestats" in layers_json:
         #     tilestats = layers_json["tilestats"]
