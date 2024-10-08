@@ -17,7 +17,7 @@ requirements = [
 
 setup(
     name='vtiles',
-    version='1.0.6',
+    version='1.0.7',
     author = 'Thang Quach',
     author_email= 'quachdongthang@gmail.com',
     url='https://github.com/thangqd/vtiles',
