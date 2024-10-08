@@ -1,5 +1,5 @@
 import sqlite3
-import os
+import os, sys
 import shutil
 from vtiles.utils.mapbox_vector_tile import encode, decode
 from vtiles.utils.geopreocessing import fix_wkt, check_vector
@@ -11,6 +11,7 @@ from tqdm import tqdm
 from vtiles.mbtiles.mbtilesfixmeta import fix_vectormetadata
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def merge_json_layers(layer1, layer2):
     # Create a dictionary to combine features by layer name
@@ -206,17 +207,7 @@ def get_center_of_bound(bounds_str):
         logging.error(f"Get center of bound error: {e}")
         return ''
         
-def merge_mbtiles(input_mbtiles, output_mbtiles):
-    notexisted_files = [file for file in input_mbtiles if not os.path.exists(file)]
-
-    if notexisted_files:
-        print(f"Error: The following input MBTiles files are not existed:")
-        for file in notexisted_files:
-            print(f"  - {file}")
-        return
-
-    if os.path.exists(output_mbtiles):
-        os.remove(output_mbtiles)
+def merge_mbtiles(input_mbtiles, output_mbtiles):   
     is_vector, compression_type = check_vector(input_mbtiles[0]) 
     if is_vector:
         fix_vectormetadata(input_mbtiles[0], compression_type,'')   
@@ -364,13 +355,32 @@ def merge_mbtiles(input_mbtiles, output_mbtiles):
         return
 
 def main():
-    parser = argparse.ArgumentParser(description="Merge multiple MBTiles files into a single MBTiles file.")
-    parser.add_argument('-i', '--input', nargs='+', required=True, help='Input MBTiles files to merge.')
-    parser.add_argument('-o', '--output', required=True, help='Output merged MBTiles file.')
+    parser = argparse.ArgumentParser(description="Merge multiple vector MBTiles files into a single MBTiles file.")
+    parser.add_argument('input', nargs='+', help='Paths to the input MBTiles files to merge.')
+    parser.add_argument('-o', '--output', help='Output merged MBTiles file. Defaults to "merged.mbtiles" in the current directory.')
 
     args = parser.parse_args()
+    for file in args.input:
+        if not os.path.exists(file):
+            print(f"Error: Input file '{file}' does not exist.")
+            sys.exit(1)  # Exit with an error code
 
-    merge_mbtiles(args.input, args.output)
+    if args.output:
+        output_file = os.path.abspath(args.output)
+        if os.path.exists(output_file):
+            logger.error(f'Output MBTiles file {output_file} already exists!. Please recheck and input a correct one. Ex: -o merged.mbtiles')
+            sys.exit(1)
+        elif not output_file.endswith('mbtiles'):
+            logger.error(f'Output MBTiles file {output_file} must end with .mbtiles. Please recheck and input a correct one. Ex: -o merged.mbtiles')
+            sys.exit(1)
+    else:
+        output_file = os.path.join(os.getcwd(), 'merged.mbtiles')
+        if os.path.exists(output_file): 
+            logger.error(f'Output MBTiles file {output_file} already exists! Please recheck and input a correct one. Ex: -o merged.mbtiles')
+            sys.exit(1)          
+
+    merge_mbtiles(args.input, output_file)
+
 
 if __name__ == '__main__':
     main()

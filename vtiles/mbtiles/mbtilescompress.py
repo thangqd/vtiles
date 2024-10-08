@@ -137,7 +137,7 @@ def main():
     # Inform the user of the conversion
     is_vector, _ = check_vector(args.input)
     if is_vector:
-        logging.info(f'Converting {input_file_abspath} to {output_file_abspath}.') 
+        logging.info(f'Compressing {input_file_abspath} to {output_file_abspath}.') 
         compress_mbtiles(input_file_abspath, output_file_abspath)
     else:
         logging.warning(f'mbtilescompress only supports vector MBTiles. {input_file_abspath} is not a vector MBTiles.')

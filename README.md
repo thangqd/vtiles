@@ -137,12 +137,13 @@ Ex: `> mbtilesinspect tiles.mbtiles`
   Ex: `> pbfinfo pbf_file.pbf`
 
 #### pbf2geojson
-- Convert tile data from a BBF file, MBTiles file, or URL to GeoJSON 
+- Convert tile data from a BBF file or MBTiles file to GeoJSON 
   ``` bash 
-    > pbf2geojson -i <input pbf, MBTiles or URL> -o <output file> -z <tile zoom level> - x <tile column> -y <tile row>  -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] 
+    > pbf2geojson <input pbf or MBTiles > -o <output file> -z <tile zoom level, default is 0> - x <tile column, default is 0> -y <tile row, default is 0>  -flipy [TMS <--> XYZ tiling scheme (optional): 1 or 0, default is 0] 
   ```
-  Ex: `> pbf2geojson -i pbf_file.pbf -o geojson_file.geojson -z 2 -x 1 -y 2`
-
+  Ex: `> pbf2geojson tiles.mbtiles -o geojson_file.geojson -z 2 -x 1 -y 2`  
+      `> pbf2geojson pbf_file.pbf`
+ 
 #### flipy
 - Convert TMS <--> XYZ tiling scheme for a tiles folder
   ``` bash 
@@ -168,9 +169,9 @@ Ex: `> mbtilesinspect tiles.mbtiles`
 #### mbtilesmerge
 - Merge multiple MBTiles files into a single MBTiles file
   ``` bash 
-    > mbtilesmerge  -i <input file list> -o <output file> -l <list of layer names to be splitted>
+    > mbtilesmerge  <input file list> -o <output file> -l <list of layer names to be splitted>
   ```
-  Ex: `> mbtilesmerge  -i file_1.mbtiles file_2.mbtiles -o merged.mbtiles`
+  Ex: `> mbtilesmerge  file_1.mbtiles file_2.mbtiles -o merged.mbtiles`
 
 #### mbtilescompress
 - Compress MBTiles file with GZIP
