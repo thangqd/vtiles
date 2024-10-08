@@ -7,7 +7,7 @@ from tqdm import tqdm
 from vtiles.utils.mapbox_vector_tile import encode, decode
 from vtiles.utils.geopreocessing import fix_wkt
 import logging
-from vtiles.mbtiles.mbtilesfixmeta import fix_vectormetadata, fix_rastermetadata
+from vtiles.mbtiles.mbtilesfixmeta import fix_vectormetadata
 from vtiles.utils.geopreocessing import check_vector
 
 logging.basicConfig(level=logging.INFO)

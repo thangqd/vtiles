@@ -2,13 +2,13 @@ import sqlite3
 import os
 import shutil
 from vtiles.utils.mapbox_vector_tile import encode, decode
-from vtiles.utils.geopreocessing import fix_wkt
+from vtiles.utils.geopreocessing import fix_wkt, check_vector
 import argparse
 import gzip, zlib
 import json
 import logging
 from tqdm import tqdm
-from vtiles.mbtiles import mbtilesfixmeta
+from vtiles.mbtiles.mbtilesfixmeta import fix_vectormetadata
 
 logging.basicConfig(level=logging.INFO)
 
@@ -217,9 +217,9 @@ def merge_mbtiles(input_mbtiles, output_mbtiles):
 
     if os.path.exists(output_mbtiles):
         os.remove(output_mbtiles)
-    is_vector, compression_type = mbtilesfixmeta.check_vector(input_mbtiles[0]) 
+    is_vector, compression_type = check_vector(input_mbtiles[0]) 
     if is_vector:
-        mbtilesfixmeta.fix_metadata(input_mbtiles[0], compression_type)   
+        fix_vectormetadata(input_mbtiles[0], compression_type,'')   
         shutil.copyfile(input_mbtiles[0], output_mbtiles)
         try:
             conn_out = sqlite3.connect(output_mbtiles)       
@@ -256,9 +256,9 @@ def merge_mbtiles(input_mbtiles, output_mbtiles):
             for i, cursor in enumerate(cursors_in):
                 if i == 0:
                     continue  # Skip the cursor for the first MBTiles file     
-                is_vector, compression_type = mbtilesfixmeta.check_vector(input_mbtiles[0]) 
+                is_vector, compression_type = check_vector(input_mbtiles[0]) 
                 if is_vector:
-                    mbtilesfixmeta.fix_metadata(input_mbtiles[i], compression_type)
+                    fix_vectormetadata(input_mbtiles[i], compression_type,'')
                     mbtiles_name = os.path.basename(input_mbtiles[i])
                     cursor.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles ORDER BY zoom_level')
                     rows = cursor.fetchall()

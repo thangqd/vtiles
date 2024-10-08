@@ -158,6 +158,7 @@ def fix_vectormetadata(input_mbtiles, compression_type, desc):
         cursor.execute("INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)", ('center', center))
     
     # update json
+    print('Updating json vector_layers')
     batch_size=10000
     workers=4
     layers_json = get_layers_from_all_tiles_parallel(input_mbtiles,batch_size,workers)
