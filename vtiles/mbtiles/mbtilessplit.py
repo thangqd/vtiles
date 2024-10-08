@@ -122,7 +122,7 @@ def process_mbtiles(input_mbtiles, output_mbtiles, layers_to_keep, keep_layers=T
 def main():
     parser = argparse.ArgumentParser(description="Split an MBTiles file by selected layers.")
     parser.add_argument('input', help='Path to the input MBTiles file.')
-    parser.add_argument('-o', '--output', help='Path to the output PMTiles file.')
+    parser.add_argument('-o', '--output', help='Path to the output splitted MBTiles file.')
     parser.add_argument("-l", "--layers", nargs='+', required=True, help="List of layer names to be splitted")
 
     args = parser.parse_args()
@@ -137,7 +137,7 @@ def main():
         if os.path.exists(output_file_abspath):
             logger.error(f'Output MBTiles  {output_file_abspath} already exists!. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
             sys.exit(1)
-        elif not output_file_abspath.endswith('pmtiles'):
+        elif not output_file_abspath.endswith('mbtiles'):
             logger.error(f'Output MBTiles  {output_file_abspath} must end with .mbtiles. Please recheck and input a correct one. Ex: -o tiles.mbtiles')
             sys.exit(1)
     else:
