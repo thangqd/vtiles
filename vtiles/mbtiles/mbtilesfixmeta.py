@@ -2,38 +2,15 @@
 # https://github.com/mapbox/mbtiles-spec/blob/master/1.3/spec.md
 # https://github.com/mapbox/tippecanoe/blob/master/main.cpp#L2033
 
-import sqlite3
-import os, sys
-import logging
-from io import BytesIO
-import gzip
-import zlib
-from vtiles.utils.geopreocessing import check_vector, determine_tileformat, get_zoom_levels,get_bounds_center
-from vtiles.utils.mapbox_vector_tile import decode
+import os,sys, sqlite3, json
+from vtiles.utils.geopreocessing import check_vector, determine_tileformat,\
+                                         get_zoom_levels,get_bounds_center, decode_tile_data
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm import tqdm
-from vtiles.utils.geopreocessing import fix_wkt
-import json
+import logging
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-import sqlite3
-import gzip
-import zlib
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from tqdm import tqdm
-
-def decode_tile_data(tile_data):   
-    try:
-        if tile_data[:2] == b'\x1f\x8b':  # GZip compressed
-            tile_data = gzip.decompress(tile_data)
-        elif tile_data[:2] in (b'\x78\x9c', b'\x78\x01', b'\x78\xda'):  # Zlib compressed
-            tile_data = zlib.decompress(tile_data)
-        decoded_tile = decode(tile_data)    
-    except Exception as e:
-        print(f"Error decoding tile data: {e}")
-        return None  # Handle failure gracefully
-    return decoded_tile
 
 def extract_layer_fields(layer_data):
     """Extract field types from layer data."""

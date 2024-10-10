@@ -125,12 +125,13 @@ def fix_wkt(data):
 
 # Check if mbtiles is vector
 def check_vector(mbtiles):   
+    compression_type = None
     try:   
         conn = sqlite3.connect(mbtiles)
         cursor = conn.cursor()
         cursor.execute("SELECT tile_data FROM tiles LIMIT 1")
         tile_data = cursor.fetchone()[0]
-        compression_type = ''           
+                  
         if tile_data[:2] == b'\x1f\x8b':
             compression_type = 'GZIP'
             tile_data = gzip.decompress(tile_data)
@@ -180,6 +181,18 @@ def determine_tileformat(mbtiles):
 
     return tile_format  # Return the determined tile_format
 
+def decode_tile_data(tile_data):   
+    try:
+        if tile_data[:2] == b'\x1f\x8b':  # GZip compressed
+            tile_data = gzip.decompress(tile_data)
+        elif tile_data[:2] in (b'\x78\x9c', b'\x78\x01', b'\x78\xda'):  # Zlib compressed
+            tile_data = zlib.decompress(tile_data)
+        decoded_tile = decode(tile_data)    
+    except Exception as e:
+        print(f"Error decoding tile data: {e}")
+        return None  # Handle failure gracefully
+    return decoded_tile
+
 
 def count_tiles(mbtiles):
     """Count the number of tiles in the MBTiles file."""
@@ -188,12 +201,56 @@ def count_tiles(mbtiles):
     cursor = connection.cursor()
     cursor.execute("SELECT COUNT(*) FROM tiles")
     num_tiles = cursor.fetchone()[0]   
+    
     cursor.close()
     connection.close()    
+    
     return num_tiles
 
-def get_zoom_levels(input_mbtiles):
-    conn = sqlite3.connect(input_mbtiles)
+def count_tiles_for_each_zoom(mbtiles):
+    """Count the number of tiles for each zoom level in the tiles table."""
+    conn = sqlite3.connect(mbtiles)
+    cursor = conn.cursor()
+
+    query = """
+    SELECT zoom_level, COUNT(*) AS tile_count
+    FROM tiles
+    GROUP BY zoom_level
+    ORDER BY zoom_level;
+    """
+    
+    cursor.execute(query)
+    results = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return results
+
+def find_duplicates(mbtiles):
+    """Find duplicate rows in the tiles table and calculate the total number of duplicates."""
+    conn = sqlite3.connect(mbtiles)
+    cursor = conn.cursor()
+
+    query = """
+    SELECT zoom_level, tile_column, tile_row, COUNT(*) AS count
+    FROM tiles
+    GROUP BY zoom_level, tile_column, tile_row
+    HAVING COUNT(*) > 1
+    ORDER BY count DESC
+    """
+    
+    cursor.execute(query)
+    duplicates = cursor.fetchall()
+
+    # Calculate the total number of duplicate rows
+    total_duplicates = sum(count - 1 for _, _, _, count in duplicates)
+
+    conn.close()
+    
+    return duplicates, total_duplicates
+
+def get_zoom_levels(mbtiles):
+    conn = sqlite3.connect(mbtiles)
     cursor = conn.cursor()
     
     # Query to get min and max zoom levels
@@ -203,15 +260,17 @@ def get_zoom_levels(input_mbtiles):
     ''')
     
     result = cursor.fetchone()    
+
+    cursor.close()
     conn.close()    
     min_zoom = result[0] if result else None
     max_zoom = result[1] if result else None  
 
     return min_zoom, max_zoom
 
-def get_bounds_at_zoom(mbtiles_input, zoom_level):
+def get_bounds_at_zoom(mbtiles, zoom_level):
     # Connect to the MBTiles SQLite database
-    conn = sqlite3.connect(mbtiles_input)
+    conn = sqlite3.connect(mbtiles)
     cursor = conn.cursor()
 
     # Query tiles at the specified zoom level
@@ -227,6 +286,7 @@ def get_bounds_at_zoom(mbtiles_input, zoom_level):
         tile_bounds = mercantile.bounds(x,flip_y, zoom_level)
         bounds.append(tile_bounds)
 
+    cursor.close()
     conn.close()
     return bounds
 
@@ -251,11 +311,11 @@ def compute_max_bound(bounds):
     # Return the overall bounding box
     return min_lon, min_lat, max_lon, max_lat,center_lon,center_lat
 
-def get_bounds_center(input_mbtiles):   
+def get_bounds_center(mbtiles):   
     boundsString, centerString = None, None
     try:    
-        _,max_zoom = get_zoom_levels(input_mbtiles)
-        bounds_at_max_zoom = get_bounds_at_zoom(input_mbtiles, max_zoom)
+        _,max_zoom = get_zoom_levels(mbtiles)
+        bounds_at_max_zoom = get_bounds_at_zoom(mbtiles, max_zoom)
         bounds = compute_max_bound(bounds_at_max_zoom)
         boundsString = ','.join(map(str, bounds[:4]))
         centerString = ','.join(map(str, bounds[4:]))+ f',{max_zoom}'     
@@ -266,6 +326,10 @@ def get_bounds_center(input_mbtiles):
         centerString = '0,0,0'
         return boundsString, centerString
 
+def get_standard_tile_count(zoom_level):
+    """Calculate the standard number of tiles for a given zoom level."""
+    num_tiles_per_side = 2 ** zoom_level
+    return num_tiles_per_side * num_tiles_per_side
 
 def get_files(path):
     """Returns an iterable containing the full path of all files in the

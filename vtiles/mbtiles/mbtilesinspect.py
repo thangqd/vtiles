@@ -1,222 +1,161 @@
 import sqlite3
-import argparse
-from io import BytesIO
-from PIL import Image
-from vtiles.utils.mapbox_vector_tile import decode
-import gzip
-import zlib
+import os, sys, argparse, textwrap
+from vtiles.utils.geopreocessing import check_vector, determine_tileformat,\
+                                        count_tiles, count_tiles_for_each_zoom,\
+                                        get_zoom_levels,get_bounds_center,find_duplicates,\
+                                        get_standard_tile_count, decode_tile_data
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import logging
+from tqdm import tqdm
+import texttable as tt
 
-def get_sample_tile_data(mbtiles):
-    """Retrieve a sample tile data from the tiles table."""
-    conn = sqlite3.connect(mbtiles)
-    cursor = conn.cursor()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-    query = "SELECT tile_data FROM tiles LIMIT 1;"
-    cursor.execute(query)
-    tile_data = cursor.fetchone()
-
-    conn.close()
-    if tile_data:
-        return tile_data[0]
-    else:
-        return None
-
-def decompress_tile_data(tile_data):
-    """Decompress tile data if it is compressed and return decompressed data with a compression flag."""
-    try:
-        # Check for gzip compression
-        with BytesIO(tile_data) as buf:
-            buf.seek(0)
-            with gzip.GzipFile(fileobj=buf) as gz:
-                return gz.read(), 'gzip'
-    except (OSError, EOFError):
-        try:
-            # Check for zlib compression
-            return zlib.decompress(tile_data), 'zlib'
-        except zlib.error:
-            # No compression or unrecognized compression format
-            return tile_data, 'none'
-    except Exception as e:
-        raise RuntimeError(f"Decompression error: {e}")
-
-def check_tile_format(tile_data):
-    """Check the format of the tile data and print whether it is compressed."""
-    if tile_data:
-        try:
-            decompressed_data, compression_type = decompress_tile_data(tile_data)  
-            print(f"Compression type: {compression_type}")                  
-            with BytesIO(decompressed_data) as buf:
-                try:
-                    # Attempt to open as an image (for raster tiles)
-                    with Image.open(buf) as img:
-                        return f"Raster Tile (Format: {img.format})"
-                except (IOError, OSError):
-                    try:
-                        # Attempt to decode as vector tile (for vector tiles)
-                        decode(decompressed_data)
-                        return "Vector Tile"
-                    except Exception as e:
-                        return f"Error identifying format: {e}"
-        except Exception as e:
-            return f"Error during decompression or format check: {e}"
-    else:
-        return "No tile data found."
-
-
-def get_standard_tile_count(zoom_level):
-    """Calculate the standard number of tiles for a given zoom level."""
-    num_tiles_per_side = 2 ** zoom_level
-    return num_tiles_per_side * num_tiles_per_side
-
-def count_tiles_for_each_zoom(mbtiles):
-    """Count the number of tiles for each zoom level in the tiles table."""
-    conn = sqlite3.connect(mbtiles)
-    cursor = conn.cursor()
-
-    query = """
-    SELECT zoom_level, COUNT(*) AS tile_count
-    FROM tiles
-    GROUP BY zoom_level
-    ORDER BY zoom_level;
-    """
-
-    cursor.execute(query)
-    results = cursor.fetchall()
-
-    conn.close()
-    return results
-
-def find_duplicates(mbtiles):
-    """Find duplicate rows in the tiles table and calculate the total number of duplicates."""
-    conn = sqlite3.connect(mbtiles)
-    cursor = conn.cursor()
-
-    query = """
-    SELECT zoom_level, tile_column, tile_row, COUNT(*) AS count
-    FROM tiles
-    GROUP BY zoom_level, tile_column, tile_row
-    HAVING COUNT(*) > 1
-    ORDER BY count;
-    """
-    
-    cursor.execute(query)
-    duplicates = cursor.fetchall()
-
-    # Calculate the total number of duplicate rows
-    total_duplicates = sum(count - 1 for _, _, _, count in duplicates)
-
-    conn.close()
-    
-    return duplicates, total_duplicates
-
-# def find_duplicates(mbtiles):
-#     """Find duplicate rows in the tiles table based on zoom_level, tile_column, and tile_row."""
-#     conn = sqlite3.connect(mbtiles)
-#     cursor = conn.cursor()
-
-#     query = """
-#     SELECT zoom_level, tile_column, tile_row, COUNT(*) AS count
-#     FROM tiles
-#     GROUP BY zoom_level, tile_column, tile_row
-#     HAVING COUNT(*) > 1
-#     ORDER BY count;
-#     """
-
-#     cursor.execute(query)
-#     duplicates = cursor.fetchall()
-
-#     conn.close()
-#     return duplicates
-
-# def count_total_duplicates(duplicates):
-#     """Calculate the total number of duplicate rows."""
-#     total_duplicates = sum(count - 1 for _, _, _, count in duplicates)
-#     return total_duplicates
-
-def get_min_zoom_level(mbtiles):
-    """Get the minimum zoom level from the tiles table."""
-    conn = sqlite3.connect(mbtiles)
-    cursor = conn.cursor()
-
-    query = "SELECT MIN(zoom_level) FROM tiles;"
-    cursor.execute(query)
-    min_zoom = cursor.fetchone()[0]
-
-    conn.close()
-    return min_zoom
-
-def get_max_zoom_level(mbtiles):
-    """Get the maximum zoom level from the tiles table."""
-    conn = sqlite3.connect(mbtiles)
-    cursor = conn.cursor()
-
-    query = "SELECT MAX(zoom_level) FROM tiles;"
-    cursor.execute(query)
-    max_zoom = cursor.fetchone()[0]
-
-    conn.close()
-    return max_zoom
-
-def count_total_tiles(mbtiles):
-    """Calculate the total number of tiles in the tiles table."""
-    conn = sqlite3.connect(mbtiles)
-    cursor = conn.cursor()
-
-    query = "SELECT COUNT(*) FROM tiles;"
-    cursor.execute(query)
-    total_tiles = cursor.fetchone()[0]
-
-    conn.close()
-    return total_tiles
-
-def main():
-    parser = argparse.ArgumentParser(description='Analyze an MBTiles file for tile counts and duplicates.')
-    parser.add_argument('mbtiles', type=str, help='Path to the MBTiles database file.')
-
-    args = parser.parse_args()
-
-    mbtiles = args.mbtiles
-
-    # Retrieve a sample tile data
-    tile_data = get_sample_tile_data(mbtiles)
-    
-    # Get the tile counts for each zoom level
-    tile_counts = count_tiles_for_each_zoom(mbtiles)
-    
-    # Get min and max zoom levels
-    min_zoom_level = get_min_zoom_level(mbtiles)
-    max_zoom_level = get_max_zoom_level(mbtiles)
-    
-    # Get total number of tiles
-    total_tiles = count_total_tiles(mbtiles)
-    
-    print(f"Min Zoom Level: {min_zoom_level}")
-    print(f"Max Zoom Level: {max_zoom_level}")
-    print(f"Total Number of Tiles: {total_tiles}")
-    # Check the format of the tile data
-    tile_format = check_tile_format(tile_data)    
+def inspect_mbtiles(mbtiles):
+    is_vector, compression_type = check_vector(mbtiles) 
+    tile_format = determine_tileformat(mbtiles)
+    min_zoom, max_zoom = get_zoom_levels(mbtiles)
+    tile_count = count_tiles(mbtiles)
+    bounds, center = get_bounds_center(mbtiles)
+    print(f"Min zoom level: {min_zoom}")
+    print(f"Max zoom level: {max_zoom}")
+    print(f"Total number of tiles: {tile_count}")
+    print(f"Bounds: {bounds}")
+    print(f"Center: {center}")
     print(f"Tile format: {tile_format}")
+    print(f"Compression type: {compression_type}")
 
-    print("\nTile count for each zoom level:")
+    print("\nTile counts for each zoom level:")
+    tile_count_zoom = count_tiles_for_each_zoom(mbtiles)
     # Print results with standard number of tiles
     print(f"{'Zoom Level':<12} {'Actual Tile Count':<20} {'Standard Tile Count':<20} {'Matches Standard'}")
     print("="*62)
-
-    for zoom_level, actual_tile_count in tile_counts:
+    for zoom_level, actual_tile_count in tile_count_zoom:
         standard_tile_count = get_standard_tile_count(zoom_level)
         matches_standard = "Yes" if actual_tile_count == standard_tile_count else "No"
         print(f"{zoom_level:<12} {actual_tile_count:<20} {standard_tile_count:<20} {matches_standard}")
-
-    # Find duplicates
-    duplicates, total_duplicates= find_duplicates(mbtiles)
+    
+        duplicates, total_duplicates= find_duplicates(mbtiles)
     
     # Print duplicates
-    print(f"Total number of duplicate rows: {total_duplicates}")
-    if total_duplicates>0:
-        print(f"{'Zoom Level':<12} {'Tile Column':<12} {'Tile Row':<12} {'Count':<6}")
-        print("="*42)
-        for zoom_level, tile_column, tile_row, count in duplicates:
+    print(f"\nTotal number of duplicate rows: {total_duplicates}")
+    rows_limit = 10
+    if total_duplicates > 0:
+        # Header for the duplicates table
+        print(f"{'Zoom Level':<12} {'Tile Column':<12} {'Tile Row':<12} {'Duplicates':<6}")
+        print("=" * 42)
+        
+        # Print only the first 10 duplicates
+        for zoom_level, tile_column, tile_row, count in duplicates[:rows_limit]:
             print(f"{zoom_level:<12} {tile_column:<12} {tile_row:<12} {count:<6}")
+
+        # Inform the user how many duplicates are in total
+        if total_duplicates > rows_limit:
+            print(f"\n...and {total_duplicates - rows_limit} more duplicates")
+        
+        print("\nNote: Please consider to use mbtilesdelduplicate to delete duplicates!")
+
+    if is_vector:
+        print("\nListing layers at each zoom level:")
+        batch_size=10000
+        workers=4
+        list_layers_for_all_zoom_levels_parallel(mbtiles,batch_size,workers)
+
+
+# Function to process a batch of tiles and extract unique layers
+def process_tile_batch(tile_batch):
+    layers = set()
+    for tile_column, tile_row, tile_data in tile_batch:
+        # Decode the vector tile using mapbox_vector_tile
+        decoded_tile = decode_tile_data(tile_data)
+        # Add all the layer names to the set
+        layers.update(decoded_tile.keys())
+    
+    return layers
+
+# Function to process all zoom levels in parallel and accumulate results
+def list_layers_for_all_zoom_levels_parallel(mbtiles_file, batch_size=10000, workers=4):
+    # Connect to the MBTiles file (SQLite database)
+    conn = sqlite3.connect(mbtiles_file)
+    cursor = conn.cursor()
+
+    # Query distinct zoom levels from the tiles table
+    cursor.execute("SELECT DISTINCT zoom_level FROM tiles ORDER BY zoom_level")
+    zoom_levels = cursor.fetchall()
+
+    # Dictionary to accumulate results for each zoom level
+    results = {}
+
+    # Iterate through each zoom level
+    for zoom_level_tuple in zoom_levels:
+        zoom_level = zoom_level_tuple[0]
+
+        # Query the tiles for the current zoom level
+        cursor.execute("SELECT tile_column, tile_row, tile_data FROM tiles WHERE zoom_level = ?", (zoom_level,))
+        tiles = cursor.fetchall()
+
+        # Split tiles into batches of `batch_size`
+        batches = [tiles[i:i + batch_size] for i in range(0, len(tiles), batch_size)]
+
+        # Initialize a set to hold unique layers for this zoom level
+        layers = set()
+
+        # Use ProcessPoolExecutor for parallel processing
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(process_tile_batch, batch): batch for batch in batches}
+
+            # Use tqdm for progress tracking
+            for future in tqdm(as_completed(futures), total=len(batches), desc=f"Processing Zoom {zoom_level}"):
+                # Add the layers from the processed batch to the main set
+                layers.update(future.result())
+
+        # Store the sorted layer list for this zoom level
+        results[zoom_level] = sorted(layers)
+
+    # Close the database connection
+    cursor.close()
+    conn.close()
+
+        # Function to format the layers list into multiple lines based on max width
+    def format_layer_list(layer_list, max_width):
+        layer_string = ", ".join(layer_list)
+        if len(layer_string) > max_width:
+            # Use textwrap to split the layer list into multiple lines
+            return "\n".join(textwrap.wrap(layer_string, width=max_width))
+        return layer_string
+
+    max_width = 80
+    # Create a texttable object
+    table = tt.Texttable()
+    table.set_cols_align(["c", "l"])  # Center align Zoom Level, Left align Layers
+    table.set_cols_valign(["m", "t"])  # Vertically align
+    table.set_cols_width([10, max_width])  # Set column widths
+
+    # Add the header row
+    table.header(["Zoom Level", "Layers"])
+
+    # Once all zoom levels are processed, accumulate the results in the table
+    for zoom_level, layer_list in results.items():
+        # Format the layer list according to the max width, wrapping it onto new lines if necessary
+        formatted_layers = format_layer_list(layer_list, max_width)
+        table.add_row([zoom_level, formatted_layers])
+
+    # Output the final table
+    print(table.draw())
+
+def main():
+    parser = argparse.ArgumentParser(description='Inspect MBTiles file with analyzing tile_data in tiles table.')
+    parser.add_argument('input', help='Path to the MBTiles file.')
+
+    args = parser.parse_args()
+    mbtiles = args.input
+
+    if (os.path.exists(mbtiles)):
+       inspect_mbtiles(mbtiles)       
+    else: 
+        logger.error ('MBTiles file does not exist!. Please recheck and input a correct file path.')
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
