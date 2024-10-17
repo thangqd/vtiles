@@ -52,8 +52,8 @@ def merge_layer_dicts(layers_accumulated, new_layers):
             # Update fields
             layers_accumulated[name]['fields'].update(layer['fields'])
             # Update minzoom and maxzoom
-            layers_accumulated[name]['minzoom'] = min(layers_accumulated[name]['minzoom'], layer['minzoom'])
-            layers_accumulated[name]['maxzoom'] = max(layers_accumulated[name]['maxzoom'], layer['maxzoom'])
+            layers_accumulated[name]['minzoom'] = min(layers_accumulated[name]['minzoom'], layer[name]['minzoom'])
+            layers_accumulated[name]['maxzoom'] = max(layers_accumulated[name]['maxzoom'], layer[name]['maxzoom'])
 
 def get_layers_from_all_tiles_parallel(mbtiles_file, batch_size=10000, workers=4):
     """Extract layer information from all tiles in the MBTiles file."""

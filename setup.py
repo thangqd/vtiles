@@ -12,7 +12,6 @@ requirements = [
     'fiona~=1.10.0',
     'shapely~=2.0.1',
     'protobuf~=5.26.1',
-    'ujson',
     'pillow'
 ],
 

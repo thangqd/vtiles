@@ -12,7 +12,6 @@ from urllib.parse import urlparse
 import math
 import boto3
 import requests
-import ujson
 import sqlite3
 from vtiles.utils.mapbox_vector_tile import decode
 import zlib, gzip
@@ -345,23 +344,6 @@ def get_files(path):
                     yield os.path.join(dirpath, filename)
     else:
         yield path
-
-
-def read_json(path):
-    """Returns JSON dict from file.
-
-    :param path: string
-    :returns: dict
-    """
-    with open(path, "r") as jsonfile:
-        return ujson.loads(jsonfile.read())
-
-
-def write_json(path, data):
-    with open(path, "w") as jsonfile:
-        jsonfile.write(
-            ujson.dumps(data, escape_forward_slashes=False, double_precision=5)
-        )
 
 
 def make_sure_path_exists(path):
