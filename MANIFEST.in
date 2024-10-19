@@ -1,0 +1,2 @@
+include vtiles/server/tilesinspect/index.html
+include vtiles/server/tilesinspect/*.css

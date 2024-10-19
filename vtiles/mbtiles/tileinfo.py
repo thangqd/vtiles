@@ -5,9 +5,9 @@ import zlib
 import os
 from datetime import datetime
 
-def read_pbf_tile(pbf_file):
+def read_pbf_tile(tile_data):
     try:
-        with open(pbf_file, 'rb') as f:
+        with open(tile_data, 'rb') as f:
             tile_data = f.read()
 
         # Check for GZIP compression
@@ -39,18 +39,18 @@ def count_feature_types(layer_data):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: pbfinfo <path_to_pbf_file>")
+        print("Usage: tileinfo <path_to_tile_data>")
         sys.exit(1)
 
-    pbf_file = sys.argv[1]
+    tile_data = sys.argv[1]
 
     # Get file size and last modified date
-    file_size = os.path.getsize(pbf_file)
-    last_modified_timestamp = os.path.getmtime(pbf_file)
+    file_size = os.path.getsize(tile_data)
+    last_modified_timestamp = os.path.getmtime(tile_data)
     last_modified_date = datetime.fromtimestamp(last_modified_timestamp).strftime('%Y-%m-%d %H:%M:%S')
 
     # Read and parse the PBF tile
-    tile_data, compression_type = read_pbf_tile(pbf_file)
+    tile_data, compression_type = read_pbf_tile(tile_data)
 
     print(f"File size: {file_size} bytes")
     print(f"Last modified: {last_modified_date}")

@@ -36,6 +36,7 @@ setup(
     long_description_content_type='text/markdown',
     requires_python=">=3.0",
     packages=find_packages(),
+    include_package_data=True,  # Include package data specified in MANIFEST.in
     entry_points={
         'console_scripts': [
                         
@@ -58,8 +59,8 @@ setup(
             'mbtilescompress = vtiles.mbtiles.mbtilescompress:main',
             'mbtilesfixmeta = vtiles.mbtiles.mbtilesfixmeta:main',
            
-            'pbfinfo = vtiles.mbtiles.pbfinfo:main',
-            'pbf2geojson = vtiles.mbtiles.pbf2geojson:main',      
+            'tileinfo = vtiles.mbtiles.pbfinfo:main',
+            'tile2geojson = vtiles.mbtiles.tile2geojson:main',      
             'flipy = vtiles.mbtiles.flipy:main',   
             'mbtiles2pmtiles = vtiles.mbtiles.mbtiles2pmtiles:main',         
             
@@ -69,7 +70,8 @@ setup(
             'serverastermbtiles=vtiles.server.serverastermbtiles:main',
             'servevectormbtiles=vtiles.server.servevectormbtiles:main',       
             'servepmtiles=vtiles.server.servepmtiles:main',                   
-            
+            'tilesinspect=vtiles.server.tilesinspect.tilesinspect:main',                   
+
             'pmtilesinfo = vtiles.utils.pmtilesinfo:main',
             'pmtiles2folder = vtiles.utils.pmtiles2folder:main',
             'pmtiles2mbtiles = vtiles.utils.pmtiles2mbtiles:main',           

@@ -114,11 +114,14 @@ def main():
             output_file_name = os.path.basename(input_file_abspath).replace('.mbtiles', f'{args.z}{args.x}{args.y}.geojson')
         elif input_file_abspath.endswith('pbf'): 
             output_file_name = os.path.basename(input_file_abspath).replace('pbf', 'geojson')
+        elif input_file_abspath.endswith('mvt'): 
+            output_file_name = os.path.basename(input_file_abspath).replace('mvt', 'geojson')
         
+
         output_file_abspath = os.path.join(os.path.dirname(input_file_abspath), output_file_name)
         
         if os.path.exists(output_file_abspath): 
-            logger.error(f'Output GeoJSON file {output_file_abspath} already exists! Please recheck and input a correct one. Ex: -o pbf2.geojson')
+            logger.error(f'Output GeoJSON file {output_file_abspath} already exists! Please recheck and input a correct one. Ex: -o tile2.geojson')
             sys.exit(1)
 # Call the processing function
     process_tile_data(input_file_abspath, args.z, args.x, args.y, output_file_abspath, args.flipy)
