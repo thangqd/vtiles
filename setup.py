@@ -12,7 +12,7 @@ requirements = [
     'fiona~=1.10.0',
     'shapely~=2.0.1',
     'protobuf~=5.26.1',
-    'pillow'
+    'pillow~=10.0.1'
 ],
 
 def clean_build():
