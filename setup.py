@@ -59,7 +59,7 @@ setup(
             'mbtilescompress = vtiles.mbtiles.mbtilescompress:main',
             'mbtilesfixmeta = vtiles.mbtiles.mbtilesfixmeta:main',
            
-            'tileinfo = vtiles.mbtiles.pbfinfo:main',
+            'tileinfo = vtiles.mbtiles.tileinfo:main',
             'tile2geojson = vtiles.mbtiles.tile2geojson:main',      
             'flipy = vtiles.mbtiles.flipy:main',   
             'mbtiles2pmtiles = vtiles.mbtiles.mbtiles2pmtiles:main',         
