@@ -17,8 +17,8 @@ class ThreadingSimpleServer(ThreadingMixIn, http.server.HTTPServer):
 def main():
     parser = argparse.ArgumentParser(description="HTTP server for PMTiles archives.")
     parser.add_argument('input', help='Path to the input PMTiles file.')
-    parser.add_argument("-port", help="Port to bind to (default: 9000)", type=int, default=9000)
-    parser.add_argument("-host", help="Address to bind server to (default: localhost)", default="localhost")
+    parser.add_argument("-port", help="Port to bind to (default: 8080)", type=int, default=8080)
+    parser.add_argument("-host", help="Address to bind server to (default: localhost)", default="0.0.0.0")
     parser.add_argument(
         "--cors-allow-all",
         help="Return Access-Control-Allow-Origin:* header",
