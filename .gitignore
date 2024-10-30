@@ -16,3 +16,4 @@ references/
 dist/
 build/
 vtiles.egg-info/
+vtiles/server/pmtilesinspect/vietnam.pmtiles

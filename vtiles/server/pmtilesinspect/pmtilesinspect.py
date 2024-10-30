@@ -12,7 +12,7 @@ def inject_url_in_html(file_path, url):
 
     # Replace the placeholder in the HTML file with the provided URL
     updated_content = content.replace(
-        'https://raw.githubusercontent.com/thangqd/vstyles/main/vstyles/topography/vietnam.json',
+        'pmtiles url',
         url
     )
 
@@ -35,7 +35,7 @@ def start_server(directory, port=8000):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: tilesinspect <URL>")
+        print("Usage: pmtilesinspect <URL>")
         sys.exit(1)
 
     # Get the URL from the command line argument

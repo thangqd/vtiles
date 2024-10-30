@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>PMTiles source and Google Hybrid layer</title>
+    <meta property="og:description" content="Uses the PMTiles plugin and protocol to present a map with Google Hybrid overlay." />
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css' />
+    <script src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js'></script>
+    <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body,
+        #map {
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <script>
+
+        // Add the PMTiles plugin to the maplibregl global.
+        const protocol = new pmtiles.Protocol();
+        maplibregl.addProtocol('pmtiles', protocol.tile);
+
+        const PMTILES_URL = "https://data.source.coop/vida/google-microsoft-open-buildings/pmtiles/go_ms_building_footprints.pmtiles"
+
+        const p = new pmtiles.PMTiles(PMTILES_URL);
+
+        // Share one instance across the JS code and the map renderer
+        protocol.add(p);
+
+        // Fetch the header to get the map center coordinates
+        p.getHeader().then(h => {
+            const map = new maplibregl.Map({
+                container: 'map',
+                zoom: 0,
+                center: [106.70644734377578, 10.775299740926028],
+                style: {
+                    version: 8,
+                    sprite: 'https://protomaps.github.io/basemaps-assets/sprites/v4/light',
+                    glyphs: 'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf',
+
+                    sources: {
+                        'msbuildings': {
+                            type: 'vector',
+                            url: `pmtiles://${PMTILES_URL}`,
+                            attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+                            minzoom: 0,
+                            maxzoom: 14
+                        },
+                        'google-hybrid': {
+                            type: 'raster',
+                            tiles: [
+                                'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+                            ],
+                            tileSize: 256,
+                            minzoom: 0,
+                            maxzoom: 22,
+                            attribution: '© Google'
+                        }
+                    },
+                    layers: [
+                        {
+                            "id": "google-hybrid-layer",
+                            "type": "raster",
+                            "source": "google-hybrid",
+                            "minzoom": 0,
+                            "maxzoom": 22
+                        },
+                        {
+                            "id": "buildings",
+                            "source": "msbuildings",
+                            "source-layer": "building_footprints",
+                            "type": "fill",
+                            "paint": { "fill-color": "#3388ff", "fill-opacity": 0.5 }
+                        }
+                    ]
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

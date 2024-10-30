@@ -12,14 +12,24 @@
     body {background:#fff;color:#333;font-family:Arial, sans-serif;}
     #map {position:absolute;top:0;left:0;right:250px;bottom:0;}
     h1 {position:absolute;top:5px;right:0;width:240px;margin:0;line-height:20px;font-size:20px;}
-    #layerList {position:absolute;top:35px;right:0;bottom:0;width:240px;overflow:auto;}
+    #layerList {position:absolute;top:35px;right:0;bottom:0;width:240px;overflow:auto;padding:10px;}
     #layerList div div {width:15px;height:15px;display:inline-block;}
+    #controls {margin-bottom: 10px;}
   </style>
 </head>
 <body>
-  <h1></h1>
+  <h1>Layer Inspector</h1>
   <div id="map"></div>
-  <div id="layerList"></div>
+  <div id="layerList">
+    <div id="controls">
+      <label>
+        <input type="checkbox" id="toggleTileBoundaries" onclick="toggleTileBoundaries()" checked> Show Tile Boundaries
+      </label><br>
+      <label>
+        <input type="checkbox" id="toggleHoverInspect" onclick="toggleHoverInspect()" checked> Show Attributes
+      </label>
+    </div>
+  </div>
   <pre id="propertyList"></pre>
   <script>
   var map = new maplibregl.Map({
@@ -31,44 +41,60 @@
       sources: {
         'vector_layer_': {
           type: 'vector',
-          url: 'https://raw.githubusercontent.com/thangqd/vstyles/main/vstyles/topography/vietnam.json'
-          // url: 'https://d17gef4m69t9r4.cloudfront.net/planet.json'
+          url: 'https://raw.githubusercontent.com/thangqd/vstyles/main/vstyles/omt/topography/vietnam.json'
         }
       },
       layers: []
     }
-    // style: 'https://raw.githubusercontent.com/thangqd/vstyles/main/vstyles/topography/topography.json'
   });
   map.addControl(new maplibregl.NavigationControl());
-  map.on('load', () => {
-            // Add a VGrid raster
-            map.addSource('vgrid', {
-                type: 'raster',
-                tiles: [
-                    'https://vgridserve.sovereignsolutions.app/vgrid/{z}/{x}/{y}.png',
-                ],
-                tileSize: 256, // Adjust tile size if necessary
-                minzoom: 0,
-                maxzoom: 23,
-            });
-            // Add the raster layer using the raster source
-            map.addLayer({
-                id: 'vgrid',
-                type: 'raster',
-                source: 'vgrid',
-                minzoom: 0,
-                maxzoom: 23,
-            });
-        });
 
+  // Initialize MaplibreInspect with hover inspection enabled by default
   var inspect = new MaplibreInspect({
     showInspectMap: true,
-    showInspectButton: false
+    showInspectButton: false,
+    showFeatureCount: false
   });
   map.addControl(inspect);
+
+  // Enable tile boundaries by default
+  map.showTileBoundaries = true;
+
+  // Toggle tile boundaries visibility
+  function toggleTileBoundaries() {
+    map.showTileBoundaries = document.getElementById("toggleTileBoundaries").checked;
+  }
+
+  // Toggle hover inspection
+  function toggleHoverInspect() {
+    var showHover = document.getElementById("toggleHoverInspect").checked;
+
+    // Remove the existing inspect control
+    map.removeControl(inspect);
+
+    // Clear hover content if hovering is disabled
+    if (!showHover) {
+       document.getElementById("propertyList").textContent = "";
+    }
+
+    // Reinitialize the inspect control with updated hover setting
+    inspect = new MaplibreInspect({
+      showInspectMap: showHover,
+      showInspectButton: false,
+      showFeatureCount: false
+    });
+
+    // Add the new inspect control back to the map
+    map.addControl(inspect);
+   
+  }
+
+  // Initialize checkboxes by calling the toggle functions
+  toggleTileBoundaries();
+  toggleHoverInspect();
+
   map.on('styledata', function() {
     var layerList = document.getElementById('layerList');
-    layerList.innerHTML = '';
     Object.keys(inspect.sources).forEach(function(sourceId) {
       var layerIds = inspect.sources[sourceId];
       layerIds.forEach(function(layerId) {
@@ -78,8 +104,9 @@
         '"></div> ' + layerId;
         layerList.appendChild(item);
       });
-    })
+    });
   });
+  
   </script>
 </body>
 </html>

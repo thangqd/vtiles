@@ -27,7 +27,7 @@ clean_build()
 
 setup(
     name='vtiles',
-    version='1.0.8',
+    version='1.0.9',
     author = 'Thang Quach',
     author_email= 'quachdongthang@gmail.com',
     url='https://github.com/thangqd/vtiles',
@@ -70,7 +70,9 @@ setup(
             'serverastermbtiles=vtiles.server.serverastermbtiles:main',
             'servevectormbtiles=vtiles.server.servevectormbtiles:main',       
             'servepmtiles=vtiles.server.servepmtiles:main',                   
-            'tilesinspect=vtiles.server.tilesinspect.tilesinspect:main',                   
+            # 'tilesinspect=vtiles.server.tilesinspect.tilesinspect:main',   
+            'pmtilesinspect=vtiles.server.pmtilesinspect.pmtilesinspect:main',   
+
 
             'pmtilesinfo = vtiles.utils.pmtilesinfo:main',
             'pmtiles2folder = vtiles.utils.pmtiles2folder:main',

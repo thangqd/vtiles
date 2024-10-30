@@ -1,2 +1,2 @@
-include vtiles/server/tilesinspect/index.html
-include vtiles/server/tilesinspect/*.css
+include vtiles/server/pmtilesinspect/*.html
+include vtiles/server/pmtilesinspect/*.css
