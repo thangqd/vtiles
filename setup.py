@@ -70,7 +70,7 @@ setup(
             'serverastermbtiles=vtiles.server.serverastermbtiles:main',
             'servevectormbtiles=vtiles.server.servevectormbtiles:main',       
             'servepmtiles=vtiles.server.servepmtiles:main',                   
-            # 'tilesinspect=vtiles.server.tilesinspect.tilesinspect:main',   
+            'tilesinspect=vtiles.server.tilesinspect.tilesinspect:main',   
             'pmtilesinspect=vtiles.server.pmtilesinspect.pmtilesinspect:main',   
 
 

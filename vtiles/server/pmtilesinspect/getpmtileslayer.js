@@ -55,7 +55,7 @@ function parseResponse(response) {
     return parsedData;
   }
   
-  exec('pmtilesinfo vietnam.pmtiles', (error, stdout, stderr) => {
+  exec('pmtiles show vietnam.pmtiles', (error, stdout, stderr) => {
     if (error) {
         console.error(`Error: ${error.message}`);
         return;

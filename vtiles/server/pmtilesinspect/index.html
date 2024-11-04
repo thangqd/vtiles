@@ -76,7 +76,7 @@
     maplibregl.addProtocol('pmtiles', protocol.tile);
 
     const PMTILES_URL = 'https://map-api-new.sovereignsolutions.net/sovereign/v20240410/vietnam_pmtiles/vietnam.pmtiles';
-    const PMTILES_JSON = 'https://map-api-new.sovereignsolutions.net/sovereign/v20240410/vietnam_pmtiles/vietnam.json'
+    const PMTILES_JSON = 'https://map-api-new.sovereignsolutions.net/sovereign/v20240410/vietnam_pmtiles/tiles.json'
     // const PMTILES_URL = 'https://build.protomaps.com/20241028.pmtiles';
     // const PMTILES_URL = 'https://cors-anywhere.herokuapp.com/https://demo-bucket.protomaps.com/v4.pmtiles'
     // const PMTILES_URL = 'http://localhost:5000/proxy/v4.pmtiles';
@@ -91,14 +91,7 @@
       hash: true,
       // maplibreLogo: true,
       style: {
-        version: 8,
-        // 
-        //   sources: {
-        //   'vector_layer_': {
-        //     type: 'vector',
-        //     url: 'https://raw.githubusercontent.com/thangqd/vstyles/main/vstyles/omt/topography/vietnam.json'
-        //   }
-        // },
+        version: 8,     
         sources: {
           'vector_layer_': {
             type: 'vector',

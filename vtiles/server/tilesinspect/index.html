@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vector Tiles Inspect</title>
+  <link rel="stylesheet" type="text/css" href="./maplibre-gl.css" />
+  <link rel="stylesheet" type="text/css" href="./maplibre-gl-inspect.css" />
+  <script>if (typeof Symbol !== 'undefined') { document.write('<script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"><\/script>'); } else { document.write('<script src="/maplibre-gl-compat.js"><\/script>'); }</script>
+  <script>if (typeof Symbol !== 'undefined') { document.write('<script src="https://github.com/acalcutt/maplibre-gl-inspect/releases/download/v1.4.6/maplibre-gl-inspect.min.js"><\/script>'); } else { document.write('<script src="/maplibre-gl-inspect-compat.min.js"><\/script>'); }</script>
+  <style>
+    body {
+      background: #fff;
+      color: #333;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 250px;
+      bottom: 0;
+    }
+
+    h1 {
+      position: absolute;
+      top: 5px;
+      right: 0;
+      width: 240px;
+      margin: 0;
+      line-height: 20px;
+      font-size: 20px;
+    }
+
+    #layerList {
+      position: absolute;
+      top: 35px;
+      right: 0;
+      bottom: 0;
+      width: 240px;
+      overflow: auto;
+      padding: 5px;
+    }
+
+    #controls {
+      margin-bottom: 10px;
+    }
+
+    #layerItems div {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1px;
+      padding: 1px;
+    }
+
+    #layerItems div div {
+      width: 15px;
+      height: 15px;
+      margin-right: 5px;
+      border: 1px solid #333;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Layer Inspector</h1>
+  <div id="map"></div>
+  <div id="layerList">
+    <div id="controls">
+      <label>
+        <input type="checkbox" id="toggleTileBoundaries" onclick="toggleTileBoundaries()" checked> Show Tile Boundaries
+      </label><br>
+      <label>
+        <input type="checkbox" id="toggleHoverInspect" onclick="toggleHoverInspect()" checked> Show Attributes
+      </label>
+    </div>
+    <div id="layerItems"></div> <!-- New container for layer items -->
+    <button id="exportGeoJSON" style="margin-top: 8px;">Current extend to GeoJSON</button>
+  </div>
+  <pre id="propertyList"></pre>
+  <script>
+    var map = new maplibregl.Map({
+      container: 'map',
+      hash: true,
+      maplibreLogo: true,
+      style: {
+        version: 8,
+        sources: {
+          'vector_layer_': {
+            type: 'vector',
+            url: 'https://map-api-new.sovereignsolutions.net/sovereign/v20240410/vietnam/tiles.json'
+          }
+        },
+        layers: []
+      }
+    });
+    map.addControl(new maplibregl.NavigationControl());
+
+    // Initialize MaplibreInspect with hover inspection enabled by default
+    var inspect = new MaplibreInspect({
+      showInspectMap: true,
+      showInspectButton: false,
+      showFeatureCount: false
+    });
+    map.addControl(inspect);
+
+    // Enable tile boundaries by default
+    map.showTileBoundaries = true;
+
+    function toggleTileBoundaries() {
+      map.showTileBoundaries = document.getElementById("toggleTileBoundaries").checked;
+    }
+
+    function clearAllPopups() {
+      const popups = document.querySelectorAll('.maplibregl-popup');
+      popups.forEach(popup => popup.remove());
+    }
+
+    function exportFeaturesToGeoJSON() {
+      // Get all rendered features from the map
+      const features = map.queryRenderedFeatures();
+
+      // Create a single FeatureCollection
+      const featureCollection = {
+        type: "FeatureCollection",
+        features: []
+      };
+
+      features.forEach(feature => {
+        // Add the sourceLayer as a property to each feature
+        const featureWithSourceLayer = {
+          type: "Feature",
+          geometry: feature.geometry,
+          id: feature.sourceLayer,
+          properties: feature.properties
+        };
+
+        // Add the modified feature to the FeatureCollection
+        featureCollection.features.push(featureWithSourceLayer);
+      });
+
+      // Convert the FeatureCollection to a JSON string
+      const geojsonStr = JSON.stringify(featureCollection, null, 2);
+
+      // Trigger download of the GeoJSON file
+      downloadGeoJSON(geojsonStr);
+    }
+
+    function downloadGeoJSON(data) {
+      // Create a blob from the GeoJSON string
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'features.geojson'; // Specify the desired file name
+      document.body.appendChild(a);
+      a.click(); // Trigger download
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url); // Clean up
+    }
+
+
+
+    function showAttributesAtClick(e) {
+      clearAllPopups(); // Clear existing popups
+      var features = map.queryRenderedFeatures(e.point); // Query features at click point
+
+      console.log('Clicked point:', e.point); // Log clicked point
+      console.log('Features found:', features); // Log found features
+
+      if (features.length) {
+        // Start building the popup content as a table
+        var popupContent = `
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody>
+        `;
+
+        // Loop through all features to build the table content
+        features.forEach((feature, index) => {
+          var properties = feature.properties; // Get properties for the feature
+
+          // Append source layer as a header
+          popupContent += `
+                <tr>
+                    <td style="padding: 1px;text-align: left;"><strong>#${feature.sourceLayer}</strong></td>
+                </tr>
+                 <tr>
+                    <th style="padding: 1px; text-align: left;">$type</th>
+                    <td style="padding: 1px;">${feature.geometry.type}</td>
+                </tr>
+            `;
+
+          // Loop through all properties and create rows for each
+          for (const [key, value] of Object.entries(properties)) {
+            popupContent += `
+                    <tr>
+                        <th style="padding: 1px; text-align: left;">${key}</th>
+                        <td style="padding: 1px;">${value}</td>
+                    </tr>
+                `;
+          }
+
+          // Add a separator after each feature's properties, except for the last feature
+          if (index < features.length - 1) {
+            popupContent += `
+                    <tr>
+                        <td colspan="2" style="padding: 0; border: none;">
+                            <hr style="border: none; border-top: 1px solid #ccc; margin: 2px 0;">
+                        </td>
+                    </tr>
+                `;
+          }
+        });
+
+        // Close the table HTML
+        popupContent += `
+                </tbody>
+            </table>
+        `;
+
+        // Create and display the popup with the table content
+        const popup = new maplibregl.Popup()
+          .setLngLat(e.lngLat)
+          .setHTML(popupContent)
+          .addTo(map);
+
+      } else {
+        console.log('No features found at this point.'); // Log if no features are found
+      }
+    }
+
+
+    function toggleHoverInspect() {
+      var showHover = document.getElementById("toggleHoverInspect").checked;
+
+      clearAllPopups();
+
+      map.removeControl(inspect);
+
+      if (!showHover) {
+        document.getElementById("propertyList").textContent = "";
+        // Add click event listener if hover is disabled
+        map.on('click', showAttributesAtClick);
+      } else {
+        // Clear click event listener if hover is enabled
+        map.off('click', showAttributesAtClick);
+      }
+
+      inspect = new MaplibreInspect({
+        showInspectMap: showHover,
+        showInspectButton: false,
+        showFeatureCount: false
+      });
+
+      map.addControl(inspect);
+    }
+
+    // Initialize checkboxes by calling the toggle functions
+    toggleTileBoundaries();
+    toggleHoverInspect();
+
+    map.on('styledata', function () {
+      var layerItems = document.getElementById('layerItems');
+      layerItems.innerHTML = '';
+
+      Object.keys(inspect.sources).forEach(function (sourceId) {
+        var layerIds = inspect.sources[sourceId];
+        layerIds.forEach(function (layerId) {
+          var item = document.createElement('div');
+          item.innerHTML = '<div style="' +
+            'background:' + inspect.assignLayerColor(layerId) + ';' +
+            '"></div> ' + layerId;
+          layerItems.appendChild(item);
+        });
+      });
+    });
+
+    // Disable click event initially
+    map.off('click', showAttributesAtClick);
+    // Add event listener to the export button
+    document.getElementById('exportGeoJSON').onclick = function () {
+      exportFeaturesToGeoJSON();
+    };
+
+  </script>
+</body>
+
+</html>
