@@ -217,9 +217,9 @@ Ex: `> mbtilesinspect tiles.mbtiles`
     > servepostgis -config <YAML configuration file> 
   ```
 #### servepmtiles
-- Serve MVT tiles from a PostgreSQL/PostGIS database, so clients can access to the tiles server via, for ex. htttp://localhost/8000/pmtiles/z/x/y.pbf.
+- Serve vector tiles for an pmtiles file htttp://localhost/8000/pmtiles/z/x/y.pbf.
   ``` bash 
-    > servepostgis  <PMTiles file> -port <port number> -host <host IP, default is localhost>
+    > servepmtiles  <PMTiles file> -port <port number> -host <host IP, default is localhost>
   ```
 ### Other Utilities:
 #### pmtilesinfo
