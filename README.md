@@ -1,13 +1,14 @@
 # VTiles - Vector Tiles Utilities
 
 ## Installation: 
+[![PyPI version](https://badge.fury.io/py/vtiles.svg)](https://badge.fury.io/py/vtiles)
+[![PyPI downloads](https://img.shields.io/pypi/dm/vtiles.svg)](https://pypistats.org/packages/vtiles)
+
 - Using pip:
   ``` bash 
   pip install vtiles --upgrade
   ```
     
-- Visit vtiles on [PyPI](https://pypi.org/project/vtiles/)
-
 ## Usage:
 ### MBTILES Utilities:
 #### mbtilesinfo
